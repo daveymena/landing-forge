@@ -1,4 +1,4 @@
-import { PageSpecSchema, uid, slugify, applyOps, EditOpSchema, type EditOp, type PageSpec } from "../schema";
+﻿import { PageSpecSchema, uid, slugify, applyOps, EditOpSchema, type EditOp, type PageSpec } from "../schema";
 import { localEdit, type EditResult } from "./localEdit";
 import { BY_TYPE, withDefaults } from "../blocks/catalog";
 import { themeFromPreset, PRESET_BY_ID, suggestPreset } from "../theme";
@@ -223,7 +223,7 @@ export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Pro
         baseSummary,
       }),
       json: true,
-      maxTokens: 12000,
+      maxTokens: 6000,
       temperature: 0.8,
     });
     const raw = extractJson(res.text);
