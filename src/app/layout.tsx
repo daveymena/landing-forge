@@ -2,9 +2,14 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Landing Forge — Generador de landings con IA",
+  title: "Landing Forge — VentasProIA · Generador de landings con IA",
   description:
     "Genera, edita y exporta landing pages modernas para dropshipping contraentrega, productos digitales y suscripciones. Integración con Dropi.",
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    apple: "/icon.svg",
+  },
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

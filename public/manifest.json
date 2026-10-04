@@ -1,0 +1,12 @@
+{
+  "name": "Landing Forge — VentasProIA",
+  "short_name": "Landing Forge",
+  "description": "Generador de landings de alta conversión con IA",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#08080b",
+  "theme_color": "#6d5efc",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
