@@ -31,6 +31,7 @@ export default function Editor({ initial }: { initial: PageSpec }) {
   const [libOpen, setLibOpen] = useState(false);
   const [libAt, setLibAt] = useState<number | undefined>(undefined);
   const [ai, setAi] = useState(false);
+  const [side, setSide] = useState<"none" | "left" | "right">("none");
   const booted = useRef(false);
 
   useEffect(() => {
@@ -39,6 +40,16 @@ export default function Editor({ initial }: { initial: PageSpec }) {
     init(initial);
     fetch("/api/generate").then((r) => r.json()).then((d) => setAi(!!d.aiAvailable)).catch(() => {});
   }, [init, initial]);
+
+  /* En móvil los paneles se abren como overlays: reflejamos el estado en el body
+     para que el CSS los muestre/oculte (body.show-left / body.show-right). */
+  useEffect(() => {
+    document.body.classList.toggle("show-left", side === "left");
+    document.body.classList.toggle("show-right", side === "right");
+    return () => {
+      document.body.classList.remove("show-left", "show-right");
+    };
+  }, [side]);
 
   const save = useCallback(async () => {
     const cur = useEditor.getState().spec;
@@ -96,6 +107,10 @@ export default function Editor({ initial }: { initial: PageSpec }) {
 
         <div className="sp" />
 
+        {/* En pantalla chica los paneles se esconden; estos botones los abren */}
+        <button className="btn sm ghost m-only" onClick={() => setSide(s => s === "left" ? "none" : "left")} title="Bloques" aria-pressed={side === "left"}>☰ Bloques</button>
+        <button className="btn sm ghost m-only" onClick={() => setSide(s => s === "right" ? "none" : "right")} title="Ajustes" aria-pressed={side === "right"}>⚙ Ajustes</button>
+
         <div className="seg">
           {([["desktop", "🖥"], ["tablet", "▭"], ["mobile", "▯"]] as const).map(([d, ic]) => (
             <button key={d} aria-pressed={device === d} onClick={() => setDevice(d)} title={d}>{ic}</button>
@@ -115,7 +130,6 @@ export default function Editor({ initial }: { initial: PageSpec }) {
 
       <div className="main">
         <BlockList onAdd={(i) => { setLibAt(i); setLibOpen(true); }} />
-
         <div className="canvas">
           <div className="canvas__bar">
             <span className="chip">{spec.vertical}</span>
@@ -145,6 +159,7 @@ export default function Editor({ initial }: { initial: PageSpec }) {
       <AiBar aiAvailable={ai} />
 
       {libOpen && <BlockLibrary at={libAt} onClose={() => setLibOpen(false)} />}
+      {side !== "none" && <div className="m-scrim" onClick={() => setSide("none")} />}
       {toast && <div className={`toast ${toast.kind}`}>{toast.msg}</div>}
     </div>
   );
