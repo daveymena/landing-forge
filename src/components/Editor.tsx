@@ -40,6 +40,13 @@ export default function Editor({ initial }: { initial: PageSpec }) {
     init(initial);
     fetch("/api/generate").then((r) => r.json()).then((d) => setAi(!!d.aiAvailable)).catch(() => {});
   }, [init, initial]);
+  
+  /* Mobile default: en pantallas pequenas arrancar en vista movil. */
+  useEffect(() => {
+    try {
+      if (window.innerWidth < 700) setDevice("mobile");
+    } catch { /* noop */ }
+  }, [setDevice]);
 
   /* En móvil los paneles se abren como overlays: reflejamos el estado en el body
      para que el CSS los muestre/oculte (body.show-left / body.show-right). */
@@ -99,7 +106,7 @@ export default function Editor({ initial }: { initial: PageSpec }) {
         <button className="btn sm m-only" onClick={() => setSide(s => s === "left" ? "none" : "left")} title="Bloques" aria-pressed={side === "left"}>☰ Bloques</button>
         <button className="btn sm m-only" onClick={() => setSide(s => s === "right" ? "none" : "right")} title="Ajustes" aria-pressed={side === "right"}>⚙</button>
         <div className="brand d-only"><span className="mark">LF</span></div>
-        <div style={{ minWidth: 0 }}>
+        <div className="tb-name" style={{ minWidth: 0 }}>
           <div style={{ fontSize: 13.5, fontWeight: 650, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 240 }}>
             {spec.name}
           </div>
