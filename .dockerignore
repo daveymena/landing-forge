@@ -1,0 +1,7 @@
+node_modules
+.next
+dev.log
+bridge.log
+*.txt
+public/ai-*.png
+public/bolso-*.png

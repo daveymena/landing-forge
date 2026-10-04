@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "agent": {
+    "bridge": {
+      "mode": "primary",
+      "description": "Asistente genérico para el puente OpenAI-compatible",
+      "prompt": "Eres un asistente de propósito general. Responde exactamente lo que se te pide, en el idioma de la pregunta. No menciones herramientas, archivos, modos ni que eres un agente de programación. No uses herramientas: responde siempre con texto directo."
+    }
+  }
+}

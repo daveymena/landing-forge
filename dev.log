@@ -1,0 +1,51 @@
+
+> landing-forge@0.1.0 dev
+> next dev -H 0.0.0.0 -p 3000
+
+▲ Next.js 16.3.8 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://0.0.0.0:3000
+- Environments: .env
+✓ Ready in 735ms
+⚠ Warning: Next.js ignored package-lock.json in C:\Users\ADMIN because it would include your home directory (C:\Users\ADMIN).
+ To use this directory, set `turbopack.root` in your Next.js config.
+
+✓ Running next.config.ts took 41ms
+
+ GET / 200 in 1056ms (next.js: 832ms, application-code: 224ms)
+ GET /api/templates 200 in 235ms (next.js: 223ms, application-code: 12ms)
+ GET /api/ai/providers 200 in 367ms (next.js: 92ms, application-code: 276ms)
+ GET /api/templates 200 in 16ms (next.js: 9ms, application-code: 8ms)
+ GET /api/settings 200 in 383ms (next.js: 157ms, application-code: 225ms)
+ GET /api/sites 200 in 385ms (next.js: 220ms, application-code: 165ms)
+ GET /api/generate 200 in 267ms (next.js: 175ms, application-code: 93ms)
+ GET /api/ai/providers 200 in 44ms (next.js: 4ms, application-code: 40ms)
+ GET /api/settings 200 in 37ms (next.js: 6ms, application-code: 31ms)
+ GET /api/sites 200 in 41ms (next.js: 15ms, application-code: 26ms)
+ GET /api/generate 200 in 32ms (next.js: 4ms, application-code: 28ms)
+ GET /api/settings 200 in 12ms (next.js: 4ms, application-code: 8ms)
+ GET /api/settings 200 in 10ms (next.js: 3ms, application-code: 7ms)
+ POST /api/generate 200 in 1332ms (next.js: 3ms, application-code: 1329ms)
+ POST /api/generate 200 in 1136ms (next.js: 3ms, application-code: 1133ms)
+ POST /api/generate 200 in 520ms (next.js: 3ms, application-code: 517ms)
+ GET /api/sites 200 in 11ms (next.js: 3ms, application-code: 8ms)
+ GET /api/sites 200 in 11ms (next.js: 3ms, application-code: 9ms)
+ POST /api/generate 200 in 780ms (next.js: 3ms, application-code: 777ms)
+ DELETE /api/sites/site_wicuzqt 200 in 1018ms (next.js: 1000ms, application-code: 18ms)
+ POST /api/dropi/test 200 in 242ms (next.js: 233ms, application-code: 9ms)
+ GET /api/sites 200 in 10ms (next.js: 3ms, application-code: 8ms)
+ POST /api/generate 200 in 1259ms (next.js: 3ms, application-code: 1256ms)
+ GET /api/sites/site_wi1mzld 200 in 38ms (next.js: 20ms, application-code: 18ms)
+ DELETE /api/sites/site_wi1mzld 200 in 20ms (next.js: 7ms, application-code: 13ms)
+ POST /api/generate 200 in 2.0s (next.js: 4ms, application-code: 2.0s)
+ GET /api/export/site_wt608m1 200 in 796ms (next.js: 780ms, application-code: 16ms)
+ GET /api/sites 200 in 10ms (next.js: 3ms, application-code: 7ms)
+ POST /api/generate 200 in 1261ms (next.js: 3ms, application-code: 1259ms)
+ DELETE /api/sites/site_wt608m1 200 in 22ms (next.js: 8ms, application-code: 14ms)
+ DELETE /api/sites/site_hsjhg6a 200 in 17ms (next.js: 7ms, application-code: 11ms)
+ GET /api/sites 200 in 10ms (next.js: 3ms, application-code: 7ms)
+ POST /api/generate 200 in 679ms (next.js: 4ms, application-code: 675ms)
+ GET /api/sites 200 in 10ms (next.js: 3ms, application-code: 7ms)
+ DELETE /api/sites/site_10ksu7d 200 in 19ms (next.js: 7ms, application-code: 12ms)
+ GET /api/settings 200 in 10ms (next.js: 3ms, application-code: 7ms)
+ GET /api/templates 200 in 10ms (next.js: 4ms, application-code: 6ms)

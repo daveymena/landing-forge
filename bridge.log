@@ -1,0 +1,12 @@
+
+> landing-forge@0.1.0 bridge
+> node tools/opencode-bridge/server.mjs
+
+02:54:30 opencode no responde — arrancando «opencode serve --port 4096»
+02:54:30 no se pudo arrancar opencode: spawn opencode ENOENT
+
+⚠  No hay un servidor de opencode en http://127.0.0.1:4096.
+   Arráncalo con:  opencode serve --port 4096
+   (o instala opencode: npm i -g opencode-ai)
+
+02:54:51 opencode-bridge escuchando en http://127.0.0.1:8787/v1
