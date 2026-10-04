@@ -75,6 +75,36 @@ export async function POST(req: Request) {
 
   const base = process.env.PUBLIC_APP_URL || new URL(req.url).origin;
 
+  /* El editor del bot espera sections { type, copy: {title,subtitle,body,cta},
+     imageUrl } — mapeamos los blocks de la nueva app a ese shape (igual que
+     hacía el map lfToBotType: hero→hero, benefits_grid→benefits, etc.) */
+  const sections = spec.blocks
+    .filter((b: any) => b.visible !== false)
+    .map((b: any, i: number) => {
+      const p = b.props || {};
+      const copy: any = {
+        title: String(p.title || p.heading || ""),
+        subtitle: String(p.subtitle || ""),
+        body: String(p.body || p.text || p.paragraph || ""),
+        cta: String(p.ctaText || p.cta || ""),
+      };
+      if (p.eyebrow) copy.eyebrow = String(p.eyebrow);
+      if (Array.isArray(p.bullets)) copy.bullets = p.bullets.map((x: any) => String(x?.text || x || ""));
+      if (Array.isArray(p.items)) copy.items = p.items;
+      const image = p.image || (Array.isArray(p.images) && p.images[0]) || "";
+      return {
+        id: b.id,
+        sort: i,
+        type: b.type,
+        layout: b.variant,
+        status: "done",
+        sectionType: b.type,
+        copy,
+        imageUrl: image || undefined,
+        props: p,
+      };
+    });
+
   return NextResponse.json({
     ok: true,
     landingId: spec.id,
@@ -84,6 +114,7 @@ export async function POST(req: Request) {
     slug: spec.slug,
     productName,
     sectionsGenerated: spec.blocks.length,
+    sections,
     engine: res.engine,
     warnings,
   });
