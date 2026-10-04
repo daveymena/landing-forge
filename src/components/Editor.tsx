@@ -95,7 +95,10 @@ export default function Editor({ initial }: { initial: PageSpec }) {
     <div className="app">
       <div className="topbar">
         <a className="btn sm ghost" href="/" title="Volver">←</a>
-        <div className="brand"><span className="mark">LF</span></div>
+        {/* En móvil primero: los paneles son lo primero que hace falta */}
+        <button className="btn sm m-only" onClick={() => setSide(s => s === "left" ? "none" : "left")} title="Bloques" aria-pressed={side === "left"}>☰ Bloques</button>
+        <button className="btn sm m-only" onClick={() => setSide(s => s === "right" ? "none" : "right")} title="Ajustes" aria-pressed={side === "right"}>⚙</button>
+        <div className="brand d-only"><span className="mark">LF</span></div>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 13.5, fontWeight: 650, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 240 }}>
             {spec.name}
@@ -107,25 +110,21 @@ export default function Editor({ initial }: { initial: PageSpec }) {
 
         <div className="sp" />
 
-        {/* En pantalla chica los paneles se esconden; estos botones los abren */}
-        <button className="btn sm ghost m-only" onClick={() => setSide(s => s === "left" ? "none" : "left")} title="Bloques" aria-pressed={side === "left"}>☰ Bloques</button>
-        <button className="btn sm ghost m-only" onClick={() => setSide(s => s === "right" ? "none" : "right")} title="Ajustes" aria-pressed={side === "right"}>⚙ Ajustes</button>
-
-        <div className="seg">
+        <div className="seg d-only">
           {([["desktop", "🖥"], ["tablet", "▭"], ["mobile", "▯"]] as const).map(([d, ic]) => (
             <button key={d} aria-pressed={device === d} onClick={() => setDevice(d)} title={d}>{ic}</button>
           ))}
         </div>
 
-        <button className="btn icon" onClick={undo} disabled={!past} title="Deshacer (⌘Z)">↶</button>
-        <button className="btn icon" onClick={redo} disabled={!future} title="Rehacer (⌘⇧Z)">↷</button>
+        <button className="btn icon d-only" onClick={undo} disabled={!past} title="Deshacer (⌘Z)">↶</button>
+        <button className="btn icon d-only" onClick={redo} disabled={!future} title="Rehacer (⌘⇧Z)">↷</button>
 
         <div className="sp" />
 
-        <span className={`chip ${ai ? "ok" : "warn"}`}>{ai ? "IA activa" : "Sin IA"}</span>
+        <span className={`chip d-only ${ai ? "ok" : "warn"}`}>{ai ? "IA activa" : "Sin IA"}</span>
         <button className="btn" onClick={save} disabled={saving}>Guardar</button>
-        <a className="btn" href={`/api/export/${spec.id}?download=0`} target="_blank" rel="noreferrer">Ver página</a>
-        <a className="btn pri" href={`/api/export/${spec.id}`}>⬇ Exportar HTML</a>
+        <a className="btn d-only" href={`/api/export/${spec.id}?download=0`} target="_blank" rel="noreferrer">Ver página</a>
+        <a className="btn pri d-only" href={`/api/export/${spec.id}`}>⬇ Exportar HTML</a>
       </div>
 
       <div className="main">

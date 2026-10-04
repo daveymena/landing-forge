@@ -200,6 +200,7 @@ textarea.inp{min-height:62px;resize:vertical;line-height:1.5}
 
 @media (max-width:1180px){ .main{grid-template-columns:220px 1fr 290px} }
 .m-only{display:none}
+.d-only{}
 .m-scrim{display:none}
 @media (max-width:980px){
   .main{grid-template-columns:1fr}
@@ -209,8 +210,8 @@ textarea.inp{min-height:62px;resize:vertical;line-height:1.5}
   body.show-right .pane.right{right:0}
   .m-only{display:inline-flex}
   .m-scrim{display:block;position:fixed;inset:0;top:var(--topbar);z-index:150;background:rgba(5,5,8,.55);backdrop-filter:blur(2px)}
-  /* la barra superior no debe desbordar: se comprime en móvil */
-  .topbar{gap:6px;padding:0 8px;overflow-x:auto;overflow-y:hidden}
-  .topbar .brand{display:none}
-  .topbar .chip{display:none}
+  /* topbar compacta: solo volver, paneles, nombre y Guardar */
+  .topbar{gap:6px;padding:0 8px}
+  .topbar .d-only{display:none}
+  .topbar > div:nth-child(3){flex:1;min-width:0}
 }
