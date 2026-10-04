@@ -172,7 +172,13 @@ function applySource(spec: PageSpec, src: ExtractedProduct): PageSpec {
     if (b.type === "video" && vids[0] && !p.videoUrl) p.videoUrl = vids[0];
     if (b.type === "gallery") {
       const current = Array.isArray(p.items) ? p.items : [];
-      p.items = imgs.slice(0, 6).map((src2, i) => ({ ...(current[i] || {}), image: src2 }));
+      const used: Record<string, boolean> = {};
+      current.forEach((c: any) => { if (c && c.image) used[String(c.image)] = true; });
+      const pool = imgs.filter((u) => !used[u]);
+      let k = 0;
+      p.items = current.map((c: any) => (c && c.image ? c : { ...(c || {}), image: pool[k++] }));
+      while (p.items.length < Math.min(6, imgs.length) && k < pool.length) p.items.push({ image: pool[k++] });
+      if (!p.items.length) p.items = imgs.slice(0, 6).map((src2) => ({ image: src2 }));
     }
     if (b.type === "beforeAfter") {
       if (!p.beforeImage) p.beforeImage = imgs[0];

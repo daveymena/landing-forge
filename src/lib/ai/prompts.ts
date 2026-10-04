@@ -104,8 +104,8 @@ Son HECHOS: respétalos exactamente, no inventes otros precios ni otro nombre.
 - Descripción original: ${(src.description || "(sin descripción)").slice(0, 700)}${
         src.bullets?.length ? `\n- Características listadas:\n${src.bullets.map((b) => `  · ${b}`).join("\n")}` : ""
       }
-${src.images?.length ? `- Hay ${src.images.length} fotos del producto; se insertan automáticamente, no inventes URLs.` : ""}
-${src.videos?.length ? `- Hay ${src.videos.length} video(s) del producto; usa hero(vsl) o bloque video para mostrarlos.` : ""}
+${src.images?.length ? "- Fotos reales (" + src.images.length + "); usalas tal cual en image/items, NO inventes otras URLs: " + src.images.slice(0, 6).join(" | ") + ". Reparte con criterio: hero la principal, galeria varias." : ""}
+${src.videos?.length ? "- Videos reales; usalos en el prop videoUrl: " + src.videos.slice(0, 3).join(" | ") + ". Usa hero(vsl) o un bloque video." : ""}
 
 Traduce y reescribe esa información como copy de venta persuasivo en español
 (la descripción original puede estar en otro idioma o ser puramente técnica).
