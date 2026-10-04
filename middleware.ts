@@ -10,9 +10,14 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const needsKey =
     pathname.startsWith("/api/ai/") ||
-    (pathname.startsWith("/api/") && !pathname.startsWith("/api/public/") && WRITE.has(req.method));
+    (pathname.startsWith("/api/") &&
+      !pathname.startsWith("/api/public/") &&
+      pathname !== "/api/auth/login" &&
+      WRITE.has(req.method));
   if (!needsKey) return NextResponse.next();
   if (req.headers.get("x-api-key") === key) return NextResponse.next();
+  const cookie = req.headers.get("cookie") || "";
+  if (cookie.includes("lf_session=")) return NextResponse.next();
   const ref = req.headers.get("referer") || "";
   try {
     if (ref && new URL(ref).host === req.nextUrl.host) return NextResponse.next();
