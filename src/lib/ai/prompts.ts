@@ -88,7 +88,7 @@ export interface SourceData {
 
 export function architectUser(
   prompt: string,
-  hints?: { vertical?: string; preset?: string; source?: SourceData; pro?: boolean; baseSummary?: string },
+  hints?: { vertical?: string; preset?: string; source?: SourceData; pro?: boolean; baseSummary?: string; palette?: { accent: string; dark: boolean; roles: Array<{ wide: boolean }> } | null },
 ): string {
   const src = hints?.source;
   const facts = src
@@ -104,8 +104,9 @@ Son HECHOS: respétalos exactamente, no inventes otros precios ni otro nombre.
 - Descripción original: ${(src.description || "(sin descripción)").slice(0, 700)}${
         src.bullets?.length ? `\n- Características listadas:\n${src.bullets.map((b) => `  · ${b}`).join("\n")}` : ""
       }
-${src.images?.length ? "- Fotos reales (" + src.images.length + "); usalas tal cual en image/items, NO inventes otras URLs: " + src.images.slice(0, 6).join(" | ") + ". Reparte con criterio: hero la principal, galeria varias." : ""}
+${src.images?.length ? "- Fotos reales en orden (principal primero); usalas tal cual en image/items, NO inventes otras URLs: " + src.images.slice(0, 6).map((u, i) => ((hints && hints.palette && hints.palette.roles[i] && hints.palette.roles[i].wide ? "(panoramica: ideal de fondo) " : i === 0 ? "(principal: hero) " : "") + u)).join(" | ") + ". Reparte con criterio: hero la principal, galeria las siguientes." : ""}
 ${src.videos?.length ? "- Videos reales; usalos en el prop videoUrl: " + src.videos.slice(0, 3).join(" | ") + ". Usa hero(vsl) o un bloque video." : ""}
+${hints && hints.palette && hints.palette.accent ? "- Paleta del producto: acento " + hints.palette.accent + (hints.palette.dark ? " (foto principal OSCURA: prefiere tema dark a juego)" : " (foto principal clara: prefiere tema light a juego)") + ". Usa ese acento en CTA y detalles." : ""}
 
 Traduce y reescribe esa información como copy de venta persuasivo en español
 (la descripción original puede estar en otro idioma o ser puramente técnica).

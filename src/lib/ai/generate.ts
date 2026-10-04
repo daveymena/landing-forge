@@ -6,6 +6,7 @@ import { TEMPLATE_BY_ID } from "../templates";
 import { generateDeterministic } from "./deterministic";
 import { parseBrief } from "./brief";
 import { complete, extractJson, resolveProvider } from "./provider";
+import { analyzePalette, type PaletteInfo } from "../palette";
 import { architectSystem, architectUser, editSystem, editUser } from "./prompts";
 import type { ExtractedProduct } from "../extract";
 
@@ -192,6 +193,21 @@ function applySource(spec: PageSpec, src: ExtractedProduct): PageSpec {
   return out;
 }
 
+/** Tine el tema con la paleta del producto (acento + contraste). No toca layout. */
+function applyPalette(spec: PageSpec, pal: PaletteInfo): PageSpec {
+  const ok = /^#[0-9a-f]{6}$/i.test(pal.accent || "");
+  if (!ok) return spec;
+  const out = { ...spec, theme: { ...spec.theme, colors: { ...spec.theme.colors } } };
+  (out.theme.colors as any).accent = pal.accent;
+  const r = parseInt(pal.accent.slice(1, 3), 16);
+  const g = parseInt(pal.accent.slice(3, 5), 16);
+  const b = parseInt(pal.accent.slice(5, 7), 16);
+  const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  (out.theme.colors as any).accentFg = lum > 0.6 ? "#0b0d12" : "#ffffff";
+  if (/^#[0-9a-f]{6}$/i.test(pal.accent2 || "")) (out.theme.colors as any).accent2 = pal.accent2;
+  return out;
+}
+
 export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Promise<GenerateResult> {
   const t0 = Date.now();
   const base = generateDeterministic(prompt, opts.id ? { id: opts.id } : {});
@@ -199,10 +215,18 @@ export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Pro
   if (tpl && PRESET_BY_ID[tpl.preset]) base.theme = themeFromPreset(tpl.preset);
   const fallback = opts.source ? applySource(base, opts.source) : base;
 
+  // Paleta desde las fotos reales (mejor esfuerzo): acento + claro/oscuro
+  // para que tema y diseno vayan con el producto.
+  let palette: PaletteInfo | null = null;
+  try {
+    if (opts.source?.images?.length) palette = await analyzePalette(opts.source.images);
+  } catch { palette = null; }
+  const themed = (s: PageSpec) => (palette && palette.accent ? applyPalette(s, palette) : s);
+
   const cfg = await resolveProvider();
   if (cfg.id === "none") {
     return {
-      spec: fallback,
+      spec: themed(fallback),
       engine: "deterministic",
       provider: "none",
       model: "",
@@ -225,6 +249,7 @@ export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Pro
         vertical: tpl?.vertical || brief.vertical,
         preset: tpl?.preset || suggestPreset(prompt, brief.vertical),
         source: opts.source,
+        palette: palette || undefined,
         pro: opts.pro,
         baseSummary,
       }),
@@ -234,11 +259,11 @@ export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Pro
     });
     const raw = extractJson(res.text);
     const norm = normalizeToSpec(raw, prompt, fallback);
-    const spec = opts.source ? applySource(norm.spec, opts.source) : norm.spec;
+    const spec = themed(opts.source ? applySource(norm.spec, opts.source) : norm.spec);
     return { spec, engine: "llm", provider: pid, model, ms: Date.now() - t0, warnings: norm.warnings };
   } catch (e: any) {
     return {
-      spec: fallback,
+      spec: themed(fallback),
       engine: "deterministic",
       provider: pid,
       model,

@@ -259,21 +259,26 @@ function usableImage(src: string): boolean {
 }
 
 function collectImages(html: string, base: string, fromLd: string[]): string[] {
-  const out: string[] = [];
-  const push = (s: string) => {
+  // Candidatas con prioridad: ficha estructurada (0) > OpenGraph (1) > <img> (2).
+  // Dentro de cada nivel mandan las mas grandes: la principal suele ser la mayor.
+  const cands: Array<{ url: string; pri: number; w: number }> = [];
+  const seen = new Set<string>();
+  const push = (s: string, pri: number, w = 0) => {
     const abs = absolute(decodeEntities(s).trim(), base);
-    if (abs && usableImage(abs) && !out.includes(abs)) out.push(abs);
+    if (!abs || !usableImage(abs) || seen.has(abs)) return;
+    seen.add(abs);
+    cands.push({ url: abs, pri, w });
   };
 
-  fromLd.forEach(push);
+  fromLd.forEach((s) => push(s, 0));
 
   const og = html.matchAll(/<meta[^>]+property\s*=\s*["']og:image(?::secure_url)?["'][^>]*>/gi);
   for (const t of og) {
     const c = t[0].match(/content\s*=\s*["']([^"']+)["']/i)?.[1];
-    if (c) push(c);
+    if (c) push(c, 1);
   }
 
-  // <img>: nos quedamos con las que declaran tamaño grande o vienen en srcset
+  // <img>: saltamos miniaturas declaradas; del srcset tomamos el mayor.
   const imgs = html.matchAll(/<img\b[^>]*>/gi);
   for (const t of imgs) {
     const tag = t[0];
@@ -282,20 +287,20 @@ function collectImages(html: string, base: string, fromLd: string[]): string[] {
     if ((w && w < 200) || (h && h < 200)) continue;
     const srcset = tag.match(/\bsrcset\s*=\s*["']([^"']+)["']/i)?.[1];
     if (srcset) {
-      const best = srcset
-        .split(",")
-        .map((p) => p.trim().split(/\s+/))
-        .sort((a, b) => parseInt(b[1] || "0") - parseInt(a[1] || "0"))[0]?.[0];
-      if (best) push(best);
+      const parts = srcset.split(",").map((p) => p.trim().split(/\s+/));
+      const withW = parts.map(([u, d]) => ({ u, w: parseInt(d || "0") || 0 })).filter((x) => x.u);
+      withW.sort((a, b) => b.w - a.w);
+      if (withW[0]) push(withW[0].u, 2, withW[0].w);
     }
     const src =
       tag.match(/\bsrc\s*=\s*["']([^"']+)["']/i)?.[1] ||
       tag.match(/\bdata-src\s*=\s*["']([^"']+)["']/i)?.[1] ||
       tag.match(/\bdata-lazy-src\s*=\s*["']([^"']+)["']/i)?.[1];
-    if (src) push(src);
-    if (out.length > 24) break;
+    if (src) push(src, 2, w);
+    if (cands.length > 40) break;
   }
-  return out.slice(0, 8);
+  cands.sort((a, b) => a.pri - b.pri || b.w - a.w);
+  return cands.slice(0, 12).map((c) => c.url);
 }
 
 /** Videos utilizables: og:video, twitter player/stream, <video>/<source>, .mp4 sueltos. */
