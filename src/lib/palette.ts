@@ -1,7 +1,9 @@
 /* Paleta del producto: acento + luminosidad desde las fotos reales.
- * Usa el Chromium de Playwright (ya instalado): dibuja cada foto en un
- * canvas pequeno y cuantiza los pixeles. Sin dependencias nuevas.
- * Si algo falla devuelve null y el generador sigue con el tema base.
+ * Usa el Chromium de Playwright (ya instalado). Para no depender del CORS
+ * de cada tienda (canvas contaminado = sin pixeles), NAVEGA directo a cada
+ * imagen: la pagina queda en el mismo origen y el canvas si se puede leer.
+ * Sin dependencias nuevas. Si algo falla devuelve null y el generador
+ * sigue con el tema base.
  */
 
 export interface PaletteRole {
@@ -36,41 +38,45 @@ export async function analyzePalette(urls: string[]): Promise<PaletteInfo | null
   try {
     const { chromium } = await import("playwright");
     browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
-    const page = await browser.newPage();
     const shots: Array<{ url: string; w: number; h: number; px: number[] }> = [];
     for (const src of list) {
+      let pg: any = null;
       try {
-        const r: any = await page.evaluate((u: string) => {
-          return new Promise((resolve) => {
-            const done = (v: any) => resolve(v);
-            const timer = setTimeout(() => done(null), 9000);
-            const im = new Image();
-            (im as any).crossOrigin = "anonymous";
-            im.onload = () => {
-              try {
-                const W = 56;
-                const nw = (im as any).naturalWidth || 56;
-                const nh = (im as any).naturalHeight || 56;
-                const H = Math.max(1, Math.round((56 * nh) / nw));
-                const cv = document.createElement("canvas");
-                cv.width = W;
-                cv.height = H;
-                const cx = cv.getContext("2d", { willReadFrequently: true });
-                if (!cx) { clearTimeout(timer); done(null); return; }
-                cx.drawImage(im, 0, 0, W, H);
-                const d = cx.getImageData(0, 0, W, H).data;
-                const out: number[] = [];
-                for (let i = 0; i < d.length; i += 16) out.push(d[i], d[i + 1], d[i + 2], d[i + 3]);
-                clearTimeout(timer);
-                done({ w: nw, h: nh, px: out });
-              } catch (e) { clearTimeout(timer); done(null); }
-            };
-            im.onerror = () => { clearTimeout(timer); done(null); };
-            im.src = u;
-          });
-        }, src);
+        pg = await browser.newPage();
+        const resp = await pg.goto(src, { waitUntil: "load", timeout: 12000 });
+        if (!resp || !resp.ok()) continue;
+        const r: any = await pg.evaluate(() => {
+          const im = document.querySelector("img");
+          if (!im) return null;
+          const nw = (im as any).naturalWidth || 0;
+          const nh = (im as any).naturalHeight || 0;
+          if (!nw || !nh) return null;
+          const W = 56;
+          const H = Math.max(1, Math.round((56 * nh) / nw));
+          const cv = document.createElement("canvas");
+          cv.width = W;
+          cv.height = H;
+          const cx = cv.getContext("2d", { willReadFrequently: true });
+          if (!cx) return null;
+          cx.drawImage(im, 0, 0, W, H);
+          let d;
+          try {
+            d = cx.getImageData(0, 0, W, H).data;
+          } catch (e) {
+            return null;
+          }
+          const out: number[] = [];
+          for (let i = 0; i < d.length; i += 16) out.push(d[i], d[i + 1], d[i + 2], d[i + 3]);
+          return { w: nw, h: nh, px: out };
+        });
         if (r && r.px) shots.push({ url: src, w: r.w || 0, h: r.h || 0, px: r.px });
-      } catch { }
+      } catch {
+      } finally {
+        try {
+          if (pg) await pg.close();
+        } catch {
+        }
+      }
     }
     if (!shots.length) return null;
     const hist = new Map<number, { n: number; r: number; g: number; b: number }>();
@@ -90,7 +96,10 @@ export async function analyzePalette(urls: string[]): Promise<PaletteInfo | null
         if (r < 14 && g < 14 && b < 14) continue;
         const key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
         const e = hist.get(key) || { n: 0, r: 0, g: 0, b: 0 };
-        e.n++; e.r += r; e.g += g; e.b += b;
+        e.n++;
+        e.r += r;
+        e.g += g;
+        e.b += b;
         hist.set(key, e);
       }
     }
@@ -119,6 +128,9 @@ export async function analyzePalette(urls: string[]): Promise<PaletteInfo | null
   } catch {
     return null;
   } finally {
-    try { if (browser) await browser.close(); } catch { }
+    try {
+      if (browser) await browser.close();
+    } catch {
+    }
   }
 }
