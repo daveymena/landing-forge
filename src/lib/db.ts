@@ -45,6 +45,11 @@ export async function getSite(id: string): Promise<PageSpec | null> {
   return all.find((s) => s.id === id) ?? null;
 }
 
+export async function getSiteBySlug(slug: string): Promise<PageSpec | null> {
+  const all = await readJson<PageSpec[]>(SITES, []);
+  return all.find((s) => s.slug === slug) ?? null;
+}
+
 export async function saveSite(spec: PageSpec): Promise<PageSpec> {
   const all = await readJson<PageSpec[]>(SITES, []);
   const i = all.findIndex((s) => s.id === spec.id);
