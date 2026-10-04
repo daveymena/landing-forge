@@ -8,11 +8,14 @@ export function middleware(req: NextRequest) {
   const key = process.env.LANDING_API_KEY;
   if (!key) return NextResponse.next();
   const { pathname } = req.nextUrl;
+  // /api/extract es de solo lectura (analiza una URL pública) y ya tiene su
+  // propio limitador por IP; pedirle auth lo rompía en el editor al pegar una URL.
   const needsKey =
     pathname.startsWith("/api/ai/") ||
     (pathname.startsWith("/api/") &&
       !pathname.startsWith("/api/public/") &&
       pathname !== "/api/auth/login" &&
+      pathname !== "/api/extract" &&
       WRITE.has(req.method));
   if (!needsKey) return NextResponse.next();
   if (req.headers.get("x-api-key") === key) return NextResponse.next();
