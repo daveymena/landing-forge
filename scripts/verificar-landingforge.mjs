@@ -8,7 +8,7 @@
  *   node scripts/verificar-landingforge.mjs
  */
 const BASE = "https://landing-forge.h9owya.easypanel.host";
-const KEY = process.env.LANDINGFORGE_API_KEY || "";
+const KEY = process.env.LANDINGFORGE_API_KEY || "tce6axy2m19g7vfqo50pu3z4";
 
 let ok = 0, fail = 0;
 
