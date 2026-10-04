@@ -300,7 +300,25 @@ function collectImages(html: string, base: string, fromLd: string[]): string[] {
     if (cands.length > 40) break;
   }
   cands.sort((a, b) => a.pri - b.pri || b.w - a.w);
-  return cands.slice(0, 12).map((c) => c.url);
+  // Deduplica la MISMA foto en varias resoluciones (-350x350, -1024x1024...):
+  // por clave base nos quedamos con la version original/grande (una sola).
+  const sizeSuffix = /[-_]\d+x\d+(?=\.\w+$)/i;
+  const baseKey = (u: string) => u.replace(/[-_]\d+x\d+(?=\.\w+$)/i, "");
+  const score = (c: { url: string; w: number }) => (sizeSuffix.test(c.url) ? 1 : 0) * 1e9 + (c.w ? 1e9 - c.w : 0);
+  const byKey = new Map<string, Array<{ url: string; pri: number; w: number }>>();
+  for (const c of cands) {
+    const k = baseKey(c.url);
+    const arr = byKey.get(k) || [];
+    arr.push(c);
+    byKey.set(k, arr);
+  }
+  const dedup: typeof cands = [];
+  for (const arr of byKey.values()) {
+    arr.sort((x, y) => score(x) - score(y));
+    dedup.push(arr[0]);
+  }
+  dedup.sort((a, b) => a.pri - b.pri || b.w - a.w);
+  return dedup.slice(0, 12).map((c) => c.url);
 }
 
 /** Videos utilizables: og:video, twitter player/stream, <video>/<source>, .mp4 sueltos. */

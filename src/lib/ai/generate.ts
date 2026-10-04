@@ -139,7 +139,7 @@ function applySource(spec: PageSpec, src: ExtractedProduct): PageSpec {
   }
   if (src.currency) out.product.currency = src.currency;
   if (src.sku) out.product.sku = src.sku;
-  if (src.images?.length) out.product.images = src.images.slice(0, 8);
+  if (src.images?.length) out.product.images = src.images.slice(0, 12);
 
   const price = out.product.price;
   const compare = out.product.compareAtPrice;
@@ -173,13 +173,15 @@ function applySource(spec: PageSpec, src: ExtractedProduct): PageSpec {
     if (b.type === "video" && vids[0] && !p.videoUrl) p.videoUrl = vids[0];
     if (b.type === "gallery") {
       const current = Array.isArray(p.items) ? p.items : [];
+      const norm = current.map((c: any) => (c && (c.src || c.image) ? { ...c, src: String(c.src || c.image) } : c)).filter((c: any) => c && c.src);
       const used: Record<string, boolean> = {};
-      current.forEach((c: any) => { if (c && c.image) used[String(c.image)] = true; });
+      norm.forEach((c: any) => { used[String(c.src)] = true; });
       const pool = imgs.filter((u) => !used[u]);
       let k = 0;
-      p.items = current.map((c: any) => (c && c.image ? c : { ...(c || {}), image: pool[k++] }));
-      while (p.items.length < Math.min(6, imgs.length) && k < pool.length) p.items.push({ image: pool[k++] });
-      if (!p.items.length) p.items = imgs.slice(0, 6).map((src2) => ({ image: src2 }));
+      // La galeria lleva TODAS las fotos: las que ya tenia + el resto del pool.
+      p.items = [...norm];
+      while (p.items.length < imgs.length && k < pool.length) p.items.push({ src: pool[k++] });
+      if (!p.items.length) p.items = imgs.map((src2) => ({ src: src2 }));
     }
     if (b.type === "beforeAfter") {
       if (!p.beforeImage) p.beforeImage = imgs[0];
@@ -190,6 +192,19 @@ function applySource(spec: PageSpec, src: ExtractedProduct): PageSpec {
     }
     return { ...b, props: p };
   });
+
+  // Si el modelo no creo galeria y hay mas de una foto, la agregamos despues
+  // del hero: la principal arriba (hero) y las demas abajo, mezcladas con el resto.
+  if (imgs.length >= 2 && !out.blocks.some((b) => b.type === "gallery")) {
+    const gi = out.blocks.findIndex((b) => b.type === "hero");
+    out.blocks.splice(gi >= 0 ? gi + 1 : out.blocks.length, 0, {
+      id: "gal_products",
+      type: "gallery",
+      variant: "grid",
+      visible: true,
+      props: { title: "", items: imgs.map((u) => ({ src: u })), bg: "default" },
+    });
+  }
   return out;
 }
 
