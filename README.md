@@ -72,6 +72,17 @@ El chip del dashboard indica en todo momento qué motor está activo. Si el LLM 
 | `npm run typecheck` | `tsc --noEmit` (el build también falla si hay errores de tipos) |
 | `npm run bridge` | Puente OpenAI-compatible con los modelos gratuitos de OpenCode (`:8787`) |
 
+### Verificar el deploy
+
+`scripts/verificar-landingforge.mjs` consulta el deploy y genera una landing de prueba. Requiere `LANDINGFORGE_API_KEY` en el entorno y termina con error antes de hacer peticiones si falta. En PowerShell:
+
+```powershell
+$env:LANDINGFORGE_API_KEY = "<clave configurada para la integración>"
+node scripts/verificar-landingforge.mjs
+```
+
+El script usa un host de deploy fijo y `POST /api/generate` crea datos de prueba; ejecútalo solo cuando esa comprobación contra ese entorno sea intencional. No guardes la clave en el repositorio ni la incluyas en logs o historial compartido de comandos.
+
 ---
 
 ## Flujo de trabajo

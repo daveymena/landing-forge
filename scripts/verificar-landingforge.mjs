@@ -8,7 +8,11 @@
  *   node scripts/verificar-landingforge.mjs
  */
 const BASE = "https://landing-forge.h9owya.easypanel.host";
-const KEY = process.env.LANDINGFORGE_API_KEY || "tce6axy2m19g7vfqo50pu3z4";
+const KEY = process.env.LANDINGFORGE_API_KEY?.trim();
+if (!KEY) {
+  console.error("Falta LANDINGFORGE_API_KEY. Defínela en el entorno antes de ejecutar este verificador.");
+  process.exit(1);
+}
 
 let ok = 0, fail = 0;
 
@@ -46,20 +50,16 @@ try {
 } catch (e) { resultado("chunks editor", false, e.message); }
 
 // 3. genera con IA
-if (KEY) {
-  try {
-    const r = await fetch(`${BASE}/api/generate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-api-key": KEY },
-      body: JSON.stringify({ prompt: "Landing de prueba con pago contra entrega en Colombia", pro: true }),
-      signal: AbortSignal.timeout(180000),
-    });
-    const j = await r.json().catch(() => ({}));
-    resultado("generate con IA", r.ok && j.engine === "llm", `engine=${j.engine} provider=${j.provider} ms=${j.ms}`);
-  } catch (e) { resultado("generate con IA", false, e.message); }
-} else {
-  console.log("⏭ generate: falta LANDINGFORGE_API_KEY en el entorno");
-}
+try {
+  const r = await fetch(`${BASE}/api/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-api-key": KEY },
+    body: JSON.stringify({ prompt: "Landing de prueba con pago contra entrega en Colombia", pro: true }),
+    signal: AbortSignal.timeout(180000),
+  });
+  const j = await r.json().catch(() => ({}));
+  resultado("generate con IA", r.ok && j.engine === "llm", `engine=${j.engine} provider=${j.provider} ms=${j.ms}`);
+} catch (e) { resultado("generate con IA", false, e.message); }
 
 console.log(`\nResultado: ${ok} OK / ${fail} FALLOS`);
 process.exit(fail ? 1 : 0);
