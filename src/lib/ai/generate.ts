@@ -168,19 +168,21 @@ function applySource(spec: PageSpec, src: ExtractedProduct): PageSpec {
     }
 
     if (!imgs.length) return { ...b, props: p };
-    if (b.type === "hero" && !p.image) p.image = imgs[0];
+    if (b.type === "hero") p.image = imgs[0];
     if (b.type === "hero" && b.variant === "vsl" && vids[0] && !p.videoUrl) p.videoUrl = vids[0];
     if (b.type === "video" && vids[0] && !p.videoUrl) p.videoUrl = vids[0];
     if (b.type === "gallery") {
       const current = Array.isArray(p.items) ? p.items : [];
-      const norm = current.map((c: any) => (c && (c.src || c.image) ? { ...c, src: String(c.src || c.image) } : c)).filter((c: any) => c && c.src);
-      const used: Record<string, boolean> = {};
-      norm.forEach((c: any) => { used[String(c.src)] = true; });
-      const pool = imgs.filter((u) => !used[u]);
-      let k = 0;
-      // La galeria lleva TODAS las fotos: las que ya tenia + el resto del pool.
-      p.items = [...norm];
-      while (p.items.length < imgs.length && k < pool.length) p.items.push({ src: pool[k++] });
+      const norm = current
+        .map((c: any) => (c && (c.src || c.image) ? { ...c, src: String(c.src || c.image) } : c))
+        .filter((c: any) => c && c.src);
+      const bySrc = new Map<string, any>(norm.map((c: any) => [c.src, c]));
+      // Siempre primero TODAS las fotos extraidas de la ficha (con el caption
+      // que el LLM ya le haya puesto si coincide), y al final las extras que
+      // el modelo haya agregado por su cuenta.
+      const fromSource = imgs.map((u) => bySrc.get(u) || { src: u });
+      const extra = norm.filter((c: any) => !imgs.includes(c.src));
+      p.items = [...fromSource, ...extra];
       if (!p.items.length) p.items = imgs.map((src2) => ({ src: src2 }));
     }
     if (b.type === "beforeAfter") {
