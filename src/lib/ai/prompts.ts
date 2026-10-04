@@ -122,6 +122,7 @@ ${hints?.vertical ? `\nVertical sugerido: ${hints.vertical}` : ""}${hints?.prese
 ${facts}
 1. Elige la plantilla cuyo vertical y keywords encajen mejor con el brief.
 2. Usa su theme.preset salvo que el brief pida otro estilo explícito.
+- REGLA DURA: si NO hay videos reales listados arriba, JAMAS uses la variante vsl ni bloques video: usa split/product/centered con las fotos.
 3. Genera la landing siguiendo el flujo de esa plantilla.
 ${hints?.pro ? "4. MODO PRO ACTIVO: ignora la plantilla y compone de cero (10-20 bloques) inspirándote en los ejemplares. Sorprende con un diseño de nivel agencia." : ""}
 ${hints?.baseSummary ? `\nPIZARRÓN — la IA parte de este lienzo existente y lo transforma (puedes mover, quitar, agregar y reescribir todo):\n${hints.baseSummary}\n` : ""}

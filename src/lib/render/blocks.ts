@@ -667,7 +667,7 @@ const R: Record<string, Renderer> = {
 
 function videoEmbed(url: string, poster?: string): string {
   const u = String(url || "");
-  if (!u) return `<div class="ph" style="aspect-ratio:16/9">Agrega la URL del video</div>`;
+  if (!u) return poster ? img(poster, "", "", true) : `<div class="ph" style="aspect-ratio:16/9">Agrega la URL del video</div>`;
   const yt = u.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/);
   if (yt) return `<iframe src="https://www.youtube-nocookie.com/embed/${yt[1]}?rel=0" title="Video" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen loading="lazy"></iframe>`;
   const vm = u.match(/vimeo\.com\/(?:video\/)?(\d+)/);
