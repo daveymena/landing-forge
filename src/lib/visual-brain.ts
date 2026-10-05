@@ -26,7 +26,7 @@ interface Slot {
 interface Decision {
   b: number;
   path: string;
-  action: "fill" | "clear";
+  action: "fill" | "clear" | "keep";
   origin?: "stock" | "generate";
   query?: string;
   enhance?: string;
