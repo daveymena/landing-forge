@@ -292,7 +292,7 @@ function collectImages(html: string, base: string, fromLd: string[]): string[] {
 
   // <img>: SOLO dentro de la ficha (corta antes de relacionados/upsells).
   const scoped = productScope(html);
-  const galRanges = [...scoped.matchAll(/woocommerce-product-gallery|product-gallery|product__media|gallery-main|product-media|zoomWrapper/i)].map((m) => m.index);
+  const galRanges = [...scoped.matchAll(/woocommerce-product-gallery|product-gallery|product__media|gallery-main|product-media|zoomWrapper/ig)].map((m) => m.index);
   const imgs = scoped.matchAll(/<img\b[^>]*>/gi);
   for (const t of imgs) {
     const tag = t[0];
