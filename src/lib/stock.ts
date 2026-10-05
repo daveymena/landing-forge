@@ -165,8 +165,8 @@ export async function stockImages(req: StockRequest): Promise<string[]> {
   if (out.length && process.env.OPENAI_ENHANCE !== "false" && process.env.OPENAI_API_KEY) {
     const prompt =
       req.kind === "portrait"
-        ? "Restyle: clean premium studio portrait, soft neutral background matching a modern landing page, natural realistic skin, no text"
-        : "Restyle: clean premium lifestyle photo, soft light, modern landing page aesthetic, no text";
+        ? "Restyle: clean premium studio portrait of ONE single person, natural realistic skin, soft neutral background, no animals, no products, no text"
+        : "Restyle: clean premium lifestyle photo of ONE single person, everyday setting, product NOT visible, soft light, no animals, no text";
     return await Promise.all(out.map((u) => enhanceImage(u, prompt)));
   }
   return out;

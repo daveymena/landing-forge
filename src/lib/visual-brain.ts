@@ -118,9 +118,10 @@ function systemPrompt(): string {
     "(enhance) para que la foto quede coherente con la paleta del diseño, 4) marcar QUITAR (clear)",
     "lo que no aporta.",
     "REGLAS DURAS:",
-    "- avatar de testimonio = retrato de PERSONA real acorde al nombre/cargo del copy (no producto, no logo).",
-    "- UGC = persona usando o en contexto del producto / estilo de vida de quien lo compra.",
+    "- avatar de testimonio = retrato HEADSHOT de la PERSONA que opina (UNA SOLA persona, acorde al nombre del copy). PROHIBIDO: animales, productos, objetos, logos, texto.",
+    "- UGC = persona en estilo de vida cotidiano, SIN mostrar el producto (el producto generado nunca es el real; el real solo va en hero/gallery con fotos extraidas). PROHIBIDO: animales, texto, marcas de agua.",
     "- Nunca uses fotos del producto en avatares; el producto solo va en hero/gallery/detalles.",
+    "- FOTOS DE PERSONA: siempre UNA SOLA persona real, sin animales, sin producto visible, sin texto.",
     "- Si el slot ya tiene una foto de persona adecuada → action keep (no la repitas en otro slot).",
     "- Si la sección es institucional y una foto de persona no aporta → action clear (queda sin foto).",
     "- origin=stock (buscar foto real) salvo que la escena sea muy específica → origin=generate.",
@@ -216,8 +217,8 @@ async function execute(
     }
     const q =
       j.slot.kind === "portrait"
-        ? `retrato de persona real para el testimonio: ${j.slot.context || "cliente satisfecho"}`
-        : `foto estilo cliente en contexto de uso: ${j.slot.context || "uso cotidiano del producto"}`;
+        ? `retrato HEADSHOT de UNA SOLA persona real, sin animales, sin productos, sin texto, para el testimonio: ${j.slot.context || "cliente satisfecho"}`
+        : `persona en estilo de vida cotidiano SIN el producto visible, sin animales, sin texto ni marcas de agua: ${j.slot.context || "persona feliz en su dia a dia"}`;
     try {
       j.url = await visionPick(j.cands, q);
     } catch {
@@ -390,7 +391,6 @@ export async function applyVisualPass(spec: any): Promise<void> {
 
 /** Último recurso: los slots que quedaron vacíos se GENERAN con OpenAI. */
 async function emergencyFill(spec: any): Promise<void> {
-  const product = String(spec?.product?.name || "").trim().slice(0, 60);
   const jobs: Array<{ set: (u: string) => void; prompt: string }> = [];
   const blocks: any[] = Array.isArray(spec?.blocks) ? spec.blocks : [];
   for (const b of blocks) {
@@ -401,7 +401,7 @@ async function emergencyFill(spec: any): Promise<void> {
         if (it && !String(it.avatar || "").trim()) {
           jobs.push({
             set: (u) => (it.avatar = u),
-            prompt: `Photorealistic professional headshot portrait of a happy customer, natural skin, soft studio light, neutral dark background, no text`,
+            prompt: `Photorealistic professional headshot portrait of ONE happy customer, single person only, natural skin, soft studio light, neutral dark background, no animals, no products, no text`,
           });
         }
       }
@@ -411,7 +411,7 @@ async function emergencyFill(spec: any): Promise<void> {
         if (it && !String(it.image || "").trim()) {
           jobs.push({
             set: (u) => (it.image = u),
-            prompt: `Photorealistic candid lifestyle photo of a customer${product ? ` using or holding ${product}` : " enjoying a purchase"}, natural light, home setting, no text`,
+            prompt: `Photorealistic lifestyle photo of ONE happy customer in an everyday home setting, product NOT visible, single person only, natural light, no animals, no text`,
           });
         }
       }
