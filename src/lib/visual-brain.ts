@@ -246,6 +246,11 @@ export async function runVisualBrain(spec: any): Promise<{ applied: number; clea
       }
     });
 
+    console.log(
+      `[VisualBrain] decisions: ${decisions
+        .map((d) => `${d.b}.${d.path.split(".").slice(-2).join(".")}:${d.action}${d.origin ? "/" + d.origin : ""}${d.query ? ` "${d.query}"` : ""}`)
+        .join(" | ")}`,
+    );
     let applied = 0;
     let cleared = 0;
     await runPool(slots, 3, async (slot) => {
