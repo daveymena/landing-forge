@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { extractFromUrl, type ExtractedProduct } from "@/lib/extract";
 import { saveSite } from "@/lib/db";
 import { generateSpec } from "@/lib/ai/generate";
+import { fillSectionImages } from "@/lib/stock";
 
 /* Compat con el bot: POST /api/landingforge/generate
    Recibe { productUrl?, productName?, productKind?, price?, currency?,
@@ -107,6 +108,8 @@ export async function POST(req: Request) {
 
   spec.settings.whatsapp = whatsapp || spec.settings.whatsapp || "";
   (spec.settings as any).checkoutUrl = checkout;
+  // Secciones sin fotos de producto (testimonios/UGC) -> stock o IA generativa.
+  await fillSectionImages(spec);
   await saveSite(spec);
 
   const base = process.env.PUBLIC_APP_URL || new URL(req.url).origin;
