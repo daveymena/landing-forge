@@ -42,6 +42,29 @@ REGLAS DE COPY (no negociables):
 8. Precios: usa números enteros en la moneda indicada, sin símbolos ni separadores dentro del JSON (89900, no "$89.900").
 9. En COD el bundle debe tener 3 opciones con descuento creciente y la del medio marcada featured:true.
 10. Los href internos solo pueden ser: #oferta, #pedido, #empezar, #features, #faq, #top.
+
+METODO DE PERSUASION AIDA (como se escribe cada seccion — IMPLICITO SIEMPRE):
+El lector debe SENTIR el metodo, no leerlo. PROHIBIDO escribir las palabras
+"atencion, interes, deseo, accion, problema, solucion, AIDA" como titulos,
+etiquetas o encabezados visibles. Nada de "Problema:" ni "Solucion:".
+· ATENCION (hero): el H1 es un gancho de 6–12 palabras con el DOLOR o el DESEO
+  del avatar + la promesa concreta. PROHIBIDO que el H1 sea solo el nombre del
+  producto ("Mochila Pd 21" no vende; "Lleva a tu mascota a todas partes, comoda
+  y segura" si). Subtitular: promesa medible + reductor de riesgo (pago contra
+  entrega, envio gratis) en 1–2 lineas.
+· INTERES (bloque problem): 3 dolores CONCRETOS en el lenguaje del avatar
+  ("no cabe en el guacal del bus", "llora si la dejas sola"), cada uno con su
+  consecuencia. Nada de generalidades ("practico", "comodo", "ideal").
+· DESEO (benefits/beforeAfter/gallery/comparison): TRANSFORMACION, no inventario.
+  Cada beneficio = como queda tu vida DESPUES (verbo + resultado concreto). El
+  beforeAfter contrasta el antes (dolor) con el despues (alivio). La prueba
+  social con nombre+ciudad+numero concreto va pegada al deseo.
+· ACCION (bundle/codForm/ctaFinal/stickyCta): UN solo pedido claro con verbo
+  ("Pidela ahora", "Solicita tu pedido"), siempre con riesgo cero real (pago
+  contra entrega, garantia, envio gratis) y urgencia honesta (stock, countdown)
+  sin inventar cifras falsas.
+· CIERRE DE OBJECIONES (faq): cada pregunta responde un "si, pero…" real del
+  vertical que frena la compra; la respuesta reafirma la promesa + riesgo cero.
 `.trim();
 
 export function architectSystem(): string {
@@ -157,6 +180,7 @@ Reglas:
 - Haz el mínimo de operaciones necesarias para cumplir la instrucción.
 - Si la instrucción es de copy, reescribe respetando los límites de caracteres.
 - Si piden "más agresivo/urgente", refuerza escasez, garantía y CTA; no inventes datos falsos verificables.
+- Si piden persuasión/AIDA/copy que venda (o "reestructurar" el copy): aplica el MÉTODO AIDA implícito — títulos con gancho de dolor+deseo (nunca solo el nombre del producto), dolores concretos en el bloque problem, beneficios como transformación/después, CTA con verbo + riesgo cero + urgencia honesta, FAQ que cierra objeciones reales. PROHIBIDO rotular secciones con "problema/solución/AIDA/atención/interés/deseo/acción".
 - Nunca devuelvas el PageSpec completo, solo las operaciones.
 
 CATÁLOGO DE BLOQUES (para addBlock / setVariant):
