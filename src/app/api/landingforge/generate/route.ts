@@ -3,6 +3,7 @@ import { extractFromUrl, type ExtractedProduct } from "@/lib/extract";
 import { saveSite } from "@/lib/db";
 import { generateSpec } from "@/lib/ai/generate";
 import { fillSectionImages } from "@/lib/stock";
+import { runVisualBrain } from "@/lib/visual-brain";
 
 /* Compat con el bot: POST /api/landingforge/generate
    Recibe { productUrl?, productName?, productKind?, price?, currency?,
@@ -108,8 +109,10 @@ export async function POST(req: Request) {
 
   spec.settings.whatsapp = whatsapp || spec.settings.whatsapp || "";
   (spec.settings as any).checkoutUrl = checkout;
-  // Secciones sin fotos de producto (testimonios/UGC) -> stock o IA generativa.
-  await fillSectionImages(spec);
+  // Cerebro visual: decide QUÉ imagen va en cada espacio segun seccion, copy y paleta.
+  const brain = await runVisualBrain(spec);
+  if (!brain) await fillSectionImages(spec);
+  else console.log(`[VisualBrain] applied=${brain.applied} cleared=${brain.cleared} ms=${brain.ms}`);
   await saveSite(spec);
 
   const base = process.env.PUBLIC_APP_URL || new URL(req.url).origin;
