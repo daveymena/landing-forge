@@ -148,42 +148,78 @@ async function runPool<T>(items: T[], limit: number, fn: (t: T) => Promise<void>
   await Promise.all(workers);
 }
 
-async function execute(spec: any, slot: Slot, d: Decision): Promise<string> {
-  if (d.action === "clear") {
-    set(spec, slot.b, slot.path, "");
-    return "clear";
-  }
-  if (d.action === "keep" && slot.current) return "keep";
-  const origin = d.origin === "generate" ? "generate" : "stock";
-  const query = String(d.query || "").trim();
-  if (!query && origin === "stock") {
-    set(spec, slot.b, slot.path, "");
-    return "clear";
-  }
-  let url: string | null = null;
-  if (origin === "generate") {
-    url = await generateImage(`${d.enhance || query} — ${query}`.trim());
-  } else {
-    url = await searchStock(query, slot.kind);
-    if (url && process.env.OPENAI_ENHANCE !== "false" && process.env.OPENAI_API_KEY && d.enhance) {
-      url = await enhanceImage(url, d.enhance);
-    } else if (!url) {
-      url = await generateImage(`${d.enhance || query} — ${query}`.trim());
-    }
-  }
-  if (!url) {
-    set(spec, slot.b, slot.path, "");
-    return "empty";
-  }
-  set(spec, slot.b, slot.path, url);
-  return url;
+
+interface Job {
+  slot: Slot;
+  d: Decision;
+  url: string | null;
+  enhance: string;
 }
 
 /**
- * Analiza el spec y decide/implementa la imagen de cada espacio.
- * Devuelve {applied, cleared, ms} o null si el agente no respondió
- * (en ese caso el caller debe usar fillSectionImages).
+ * Ejecuta las decisiones en dos fases:
+ *  1) búsqueda de stock SECUENCIAL con un `used` compartido — así dos slots
+ *     nunca reciben la misma foto (bug de UGC repetido),
+ *  2) enhance/generación en PARALELO — lo lento va aquí.
  */
+async function execute(
+  spec: any,
+  slots: Slot[],
+  decisions: Decision[],
+  used: Set<string>,
+): Promise<{ applied: number; cleared: number }> {
+  const jobs: Job[] = [];
+  let applied = 0;
+  let cleared = 0;
+  const enhanceOn = process.env.OPENAI_ENHANCE !== "false" && !!process.env.OPENAI_API_KEY;
+
+  for (const slot of slots) {
+    const d = decisions.find((x) => x.b === slot.b && x.path === slot.path);
+    if (!d) continue;
+    if (d.action === "clear") {
+      set(spec, slot.b, slot.path, "");
+      cleared++;
+      continue;
+    }
+    if (d.action === "keep" && slot.current) continue;
+    const query = String(d.query || "").trim();
+    if (!query) {
+      set(spec, slot.b, slot.path, "");
+      cleared++;
+      continue;
+    }
+    let url: string | null = null;
+    if (d.origin !== "generate") {
+      url = await searchStock(query, slot.kind, used);
+      if (url) used.add(url);
+    }
+    jobs.push({ slot, d, url, enhance: enhanceOn && d.enhance ? d.enhance : "" });
+  }
+
+  await runPool(jobs, 3, async (j) => {
+    let final = j.url || "";
+    try {
+      if (j.url && j.enhance) {
+        final = await enhanceImage(j.url, j.enhance);
+      } else if (!j.url) {
+        final = (await generateImage(`${j.d.enhance || j.d.query || ""} — ${j.d.query || ""}`.trim())) || "";
+      }
+    } catch {
+      final = j.url || "";
+    }
+    if (final) {
+      set(spec, j.slot.b, j.slot.path, final);
+      used.add(final);
+      applied++;
+    } else {
+      set(spec, j.slot.b, j.slot.path, "");
+      cleared++;
+    }
+  });
+
+  return { applied, cleared };
+}
+
 export async function runVisualBrain(spec: any): Promise<{ applied: number; cleared: number; ms: number } | null> {
   const t0 = Date.now();
   try {
@@ -195,14 +231,16 @@ export async function runVisualBrain(spec: any): Promise<{ applied: number; clea
       "",
       "SLOTS:",
       ...slots.map((s, i) =>
-        `#${i} b=${s.b} type=${s.type} path=${s.path} current=${s.current || "(vacío)"} — "${s.title}" | ${s.context}`,
+        `#${i} b=${s.b} type=${s.type} path=${s.path} current=${s.current || "(vacío)"} — \"${s.title}\" | ${s.context}`,
       ),
     ].join("\n");
 
     const res = await complete({ system: systemPrompt(), user, json: true, maxTokens: 2400, temperature: 0.4 });
     const parsed = parseJson(res.text);
     const decisions: Decision[] = Array.isArray(parsed.decisions) ? parsed.decisions : [];
-    const remove: string[] = Array.isArray(parsed.removeUrls) ? parsed.removeUrls.filter((u: any) => typeof u === "string" && u) : [];
+    const remove: string[] = Array.isArray(parsed.removeUrls)
+      ? parsed.removeUrls.filter((u: any) => typeof u === "string" && u)
+      : [];
     if (!decisions.length) return null;
 
     /* --- reglas duras de auditoría (no dependen del LLM) --- */
@@ -210,18 +248,23 @@ export async function runVisualBrain(spec: any): Promise<{ applied: number; clea
     for (const s of slots) {
       const d = decisions.find((x) => x.b === s.b && x.path === s.path);
       if (!d) {
-        decisions.push({ b: s.b, path: s.path, action: s.current ? "keep" : "fill", origin: "stock", query: "person lifestyle", enhance: "clean premium lifestyle" });
+        decisions.push({
+          b: s.b,
+          path: s.path,
+          action: s.current ? "keep" : "fill",
+          origin: "stock",
+          query: "person lifestyle",
+          enhance: "clean premium lifestyle",
+        });
         continue;
       }
       if (s.current) {
-        // foto de producto usada como avatar/UGC → fuera
         if (d.action === "keep" && PRODUCT_URL_RE.test(s.current)) {
           d.action = "fill";
           d.origin = d.origin || "stock";
           d.query = d.query || (s.kind === "portrait" ? "happy customer portrait" : "person using product");
           d.why = "producto en slot de persona";
         }
-        // URL repetida en otro slot → obliga foto nueva
         if (d.action === "keep" && seen.has(s.current)) {
           d.action = "fill";
           d.query = d.query || (s.kind === "portrait" ? "customer portrait smiling" : "lifestyle photo customer");
@@ -230,11 +273,11 @@ export async function runVisualBrain(spec: any): Promise<{ applied: number; clea
         seen.add(s.current);
       }
       if (remove.length && s.current && remove.includes(s.current)) {
-        d.action = d.action === "keep" ? "fill" : d.action;
+        if (d.action === "keep") d.action = "fill";
         d.query = d.query || (s.kind === "portrait" ? "customer portrait" : "lifestyle scene");
       }
     }
-    // limpia removeUrls en TODOS los slots (incluso fuera de la lista)
+
     const blocks: any[] = Array.isArray(spec?.blocks) ? spec.blocks : [];
     blocks.forEach((b) => {
       const p = b.props || {};
@@ -248,19 +291,14 @@ export async function runVisualBrain(spec: any): Promise<{ applied: number; clea
 
     console.log(
       `[VisualBrain] decisions: ${decisions
-        .map((d) => `${d.b}.${d.path.split(".").slice(-2).join(".")}:${d.action}${d.origin ? "/" + d.origin : ""}${d.query ? ` "${d.query}"` : ""}`)
+        .map(
+          (d) =>
+            `${d.b}.${d.path.split(".").slice(-2).join(".")}:${d.action}${d.origin ? "/" + d.origin : ""}${d.query ? ` \"${d.query}\"` : ""}`,
+        )
         .join(" | ")}`,
     );
-    let applied = 0;
-    let cleared = 0;
-    await runPool(slots, 3, async (slot) => {
-      const d = decisions.find((x) => x.b === slot.b && x.path === slot.path);
-      if (!d) return;
-      const r = await execute(spec, slot, d);
-      if (r === "clear" || r === "empty") cleared++;
-      else if (r !== "keep") applied++;
-    });
 
+    const { applied, cleared } = await execute(spec, slots, decisions, new Set<string>());
     return { applied, cleared, ms: Date.now() - t0 };
   } catch {
     return null;
