@@ -105,6 +105,48 @@ async function fromOpenAI(q: string, kind: StockKind): Promise<string | null> {
   }
 }
 
+
+/**
+ * Mejora/transforma una foto de stock con OpenAI (images/edits): re-estiliza
+ * al tono de la landing. Si algo falla devuelve la URL original (la landing
+ * nunca depende de OpenAI para tener imagen).
+ */
+async function enhanceWithOpenAI(url: string, kind: StockKind): Promise<string> {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) return url;
+  try {
+    const resp = await fetch(url, { signal: AbortSignal.timeout(15000) });
+    if (!resp.ok) return url;
+    const type = resp.headers.get("content-type") || "image/jpeg";
+    const buf = Buffer.from(await resp.arrayBuffer());
+    const prompt =
+      kind === "portrait"
+        ? "Restyle this customer portrait: clean premium studio look, soft neutral dark background matching a modern landing page, natural realistic skin, subtle color grade, no text, no watermark, keep the same person"
+        : "Restyle this lifestyle photo: clean premium look, soft light, modern landing page aesthetic, natural colors, no text, no watermark, keep the scene";
+    const fd = new FormData();
+    fd.append("model", process.env.OPENAI_IMAGE_MODEL || "gpt-image-1-mini");
+    fd.append("image", new Blob([new Uint8Array(buf)], { type }), "photo");
+    fd.append("prompt", prompt);
+    fd.append("size", "1024x1024");
+    fd.append("n", "1");
+    const r = await fetch("https://api.openai.com/v1/images/edits", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}` },
+      body: fd,
+      signal: AbortSignal.timeout(75000),
+    });
+    if (!r.ok) return url;
+    const j: any = await r.json();
+    const b64 = j.data?.[0]?.b64_json;
+    if (!b64) return url;
+    await fs.mkdir(DATA_IMG, { recursive: true });
+    const id = randomBytes(8).toString("hex");
+    await fs.writeFile(path.join(DATA_IMG, `${id}.png`), Buffer.from(b64, "base64"));
+    return `${base()}/api/img/${id}`;
+  } catch {
+    return url;
+  }
+}
 /** Devuelve `count` URLs distintas; usa las que falten por el siguiente proveedor. */
 export async function stockImages(req: StockRequest): Promise<string[]> {
   const count = Math.max(1, Math.min(8, req.count || 1));
@@ -124,6 +166,11 @@ export async function stockImages(req: StockRequest): Promise<string[]> {
       used.add(got);
       out.push(got);
     }
+  }
+  // Ambos trabajan juntos: OpenAI transforma las fotos de stock al estilo de
+  // la landing (en paralelo); si algo falla, queda la foto de stock original.
+  if (out.length && process.env.OPENAI_ENHANCE !== "false" && process.env.OPENAI_API_KEY) {
+    return await Promise.all(out.map((u) => enhanceWithOpenAI(u, req.kind)));
   }
   return out;
 }
