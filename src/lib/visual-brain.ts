@@ -1,5 +1,5 @@
 import { complete } from "@/lib/ai/provider";
-import { searchStock, generateImage, enhanceImage, fillSectionImages, type StockKind } from "@/lib/stock";
+import { searchStock, generateImage, fillSectionImages, type StockKind } from "@/lib/stock";
 import { visionPick } from "@/lib/vision";
 
 /* ------------------------------------------------------------------ *
@@ -114,9 +114,8 @@ function systemPrompt(): string {
     "Recibes el spec de una landing y la lista de SLOTS (espacios que necesitan imagen).",
     "Tu trabajo: 1) decidir QUÉ imagen va EXACTAMENTE en cada espacio según el contexto real",
     "(de quién habla la sección, qué producto se vende, la paleta y el tono), 2) dar la query de",
-    "búsqueda de stock EN INGLÉS corta y concreta (Pexels/Pixabay), 3) el prompt de re-estilizado",
-    "(enhance) para que la foto quede coherente con la paleta del diseño, 4) marcar QUITAR (clear)",
-    "lo que no aporta.",
+    "búsqueda de stock EN INGLÉS corta y concreta (Pexels/Pixabay),", 
+    "3) marcar QUITAR (clear) lo que no aporta. Las fotos de stock se usan AL NATURAL, sin retoques.",
     "REGLAS DURAS:",
     "- avatar de testimonio = retrato HEADSHOT de la PERSONA que opina (UNA SOLA persona, acorde al nombre del copy). PROHIBIDO: animales, productos, objetos, logos, texto.",
     "- UGC = persona en estilo de vida cotidiano, SIN mostrar el producto (el producto generado nunca es el real; el real solo va en hero/gallery con fotos extraidas). PROHIBIDO: animales, texto, marcas de agua.",
@@ -125,7 +124,7 @@ function systemPrompt(): string {
     "- Si el slot ya tiene una foto de persona adecuada → action keep (no la repitas en otro slot).",
     "- Si la sección es institucional y una foto de persona no aporta → action clear (queda sin foto).",
     "- origin=stock (buscar foto real) salvo que la escena sea muy específica → origin=generate.",
-    "- query en inglés, máx 8 palabras; enhance en inglés, describe fondo/luces/estilo con la paleta.",
+    "- query en ingles, max 8 palabras: describe a la persona y su contexto de uso.",
     "- Nunca repitas la misma URL en dos slots distintos (si el current está repetido, nueva foto).",
     "DEVUELVE SOLO JSON: {\"decisions\":[{\"b\":0,\"path\":\"props.items.0.avatar\",\"action\":\"fill\",",
     "\"origin\":\"stock\",\"query\":\"...\",\"enhance\":\"...\",\"why\":\"...\"}],",
@@ -156,7 +155,6 @@ interface Job {
   d: Decision;
   cands: string[];
   url: string | null;
-  enhance: string;
 }
 
 /**
@@ -176,7 +174,6 @@ async function execute(
   const jobs: Job[] = [];
   let applied = 0;
   let cleared = 0;
-  const enhanceOn = process.env.OPENAI_ENHANCE !== "false" && !!process.env.OPENAI_API_KEY;
 
   for (const slot of slots) {
     const d = decisions.find((x) => x.b === slot.b && x.path === slot.path);
@@ -202,7 +199,7 @@ async function execute(
         cands.push(c);
       }
     }
-    jobs.push({ slot, d, cands, url: null, enhance: enhanceOn && d.enhance ? d.enhance : "" });
+    jobs.push({ slot, d, cands, url: null });
   }
 
   // El modelo de visión elige la candidata que mejor encaja con el slot.
@@ -229,14 +226,17 @@ async function execute(
 
   await runPool(jobs, 3, async (j) => {
     let final = j.url || "";
-    try {
-      if (j.url && j.enhance) {
-        final = await enhanceImage(j.url, j.enhance);
-      } else if (!j.url) {
-        final = (await generateImage(`${j.d.enhance || j.d.query || ""} — ${j.d.query || ""}`.trim())) || "";
+    // Stock AL NATURAL: retocar caras con IA las deja plasticosas. Solo se genera lo que el stock no cubrio.
+    if (!j.url) {
+      try {
+        const prompt =
+          j.slot.kind === "portrait"
+            ? `Candid amateur smartphone selfie portrait of ONE real person, natural skin with texture, uneven natural light, imperfect framing, realistic snapshot, NOT professional, no beauty filter, no text`
+            : `Candid amateur smartphone photo of ONE real everyday person at home, natural skin, casual snapshot, product NOT visible, realistic, NOT professional, no text`;
+        final = (await generateImage(prompt)) || "";
+      } catch {
+        final = "";
       }
-    } catch {
-      final = j.url || "";
     }
     if (final) {
       set(spec, j.slot.b, j.slot.path, final);
