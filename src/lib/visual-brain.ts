@@ -1,5 +1,6 @@
 import { complete } from "@/lib/ai/provider";
 import { searchStock, generateImage, enhanceImage, fillSectionImages, type StockKind } from "@/lib/stock";
+import { visionPick } from "@/lib/vision";
 
 /* ------------------------------------------------------------------ *
  * CEREBRO VISUAL — agente especializado en la imagen de cada espacio.
@@ -152,15 +153,18 @@ async function runPool<T>(items: T[], limit: number, fn: (t: T) => Promise<void>
 interface Job {
   slot: Slot;
   d: Decision;
+  cands: string[];
   url: string | null;
   enhance: string;
 }
 
 /**
- * Ejecuta las decisiones en dos fases:
- *  1) búsqueda de stock SECUENCIAL con un `used` compartido — así dos slots
- *     nunca reciben la misma foto (bug de UGC repetido),
- *  2) enhance/generación en PARALELO — lo lento va aquí.
+ * Ejecuta las decisiones en tres fases:
+ *  1a) candidatas de stock SECUENCIAL con `used` compartido (rápido,
+ *      sin repetir fotos entre slots),
+ *  1b) el modelo de VISION elige la que mejor encaja (paralelo),
+ *  2) enhance/generación en PARALELO (lo lento va aquí).
+ * Si visión descarta todas → OpenAI genera la imagen.
  */
 async function execute(
   spec: any,
@@ -188,13 +192,39 @@ async function execute(
       cleared++;
       continue;
     }
-    let url: string | null = null;
+    const cands: string[] = [];
     if (d.origin !== "generate") {
-      url = await searchStock(query, slot.kind, used);
-      if (url) used.add(url);
+      for (let k = 0; k < 3; k++) {
+        const c = await searchStock(query, slot.kind, used);
+        if (!c) break;
+        used.add(c);
+        cands.push(c);
+      }
     }
-    jobs.push({ slot, d, url, enhance: enhanceOn && d.enhance ? d.enhance : "" });
+    jobs.push({ slot, d, cands, url: null, enhance: enhanceOn && d.enhance ? d.enhance : "" });
   }
+
+  // El modelo de visión elige la candidata que mejor encaja con el slot.
+  await runPool(jobs, 3, async (j) => {
+    if (j.d.origin === "generate" || !j.cands.length) {
+      j.url = null;
+      return;
+    }
+    if (j.cands.length < 2) {
+      j.url = j.cands[0];
+      return;
+    }
+    const q =
+      j.slot.kind === "portrait"
+        ? `retrato de persona real para el testimonio: ${j.slot.context || "cliente satisfecho"}`
+        : `foto estilo cliente en contexto de uso: ${j.slot.context || "uso cotidiano del producto"}`;
+    try {
+      j.url = await visionPick(j.cands, q);
+    } catch {
+      j.url = j.cands[0];
+    }
+    for (const c of j.cands) if (c !== j.url) used.delete(c);
+  });
 
   await runPool(jobs, 3, async (j) => {
     let final = j.url || "";
@@ -219,7 +249,6 @@ async function execute(
 
   return { applied, cleared };
 }
-
 export async function runVisualBrain(spec: any): Promise<{ applied: number; cleared: number; ms: number } | null> {
   const t0 = Date.now();
   try {
