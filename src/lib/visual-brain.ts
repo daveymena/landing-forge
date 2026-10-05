@@ -304,3 +304,33 @@ export async function runVisualBrain(spec: any): Promise<{ applied: number; clea
     return null;
   }
 }
+
+/**
+ * Política de calidad: un testimonio/UGC sin foto NO se queda en la landing.
+ *  - item sin imagen → fuera,
+ *  - bloque con menos de 2 items con foto → bloque entero fuera.
+ * Se ejecuta SIEMPRE después del cerebro (o del fallback automático).
+ */
+export function pruneEmptyVisuals(spec: any): { removedItems: number; removedBlocks: number } {
+  let removedItems = 0;
+  let removedBlocks = 0;
+  const blocks: any[] = Array.isArray(spec?.blocks) ? spec.blocks : [];
+  for (let i = blocks.length - 1; i >= 0; i--) {
+    const b = blocks[i];
+    const p = b?.props;
+    if (!p || !Array.isArray(p.items)) continue;
+    if (b.type !== "testimonials" && b.type !== "reviewsUgc") continue;
+    const key = b.type === "testimonials" ? "avatar" : "image";
+    const before = p.items.length;
+    p.items = p.items.filter((it: any) => it && String(it[key] || "").trim());
+    removedItems += before - p.items.length;
+    if (p.items.length < 2) {
+      blocks.splice(i, 1);
+      removedBlocks++;
+    }
+  }
+  if (removedItems || removedBlocks) {
+    console.log(`[VisualBrain] prune: -${removedItems} items, -${removedBlocks} bloques sin foto`);
+  }
+  return { removedItems, removedBlocks };
+}

@@ -258,16 +258,28 @@ function usableImage(src: string): boolean {
   );
 }
 
+/**
+ * Recorta el HTML justo antes de secciones de "otros productos"
+ * (related / upsells / recomendaciones): esas fotos NO son del producto.
+ */
+function productScope(html: string): string {
+  const re = new RegExp(
+    String.raw`<(?:section|div|ul|aside)\b[^>]*(?:class|id)\s*=\s*["'][^"']*(?:related|upsell|cross-?sell|recommend|also-viewed|also-bought|otros-productos|productos-relacionados)[^"']*["']|<(?:h2|h3)\b[^>]*>\s*(?:Related|You may also|Otros productos|Productos relacionados|Tambi[eé]n te|Tambien te|Customers also)`,
+    "i",
+  );
+  const m = re.exec(html);
+  return m && m.index > 800 ? html.slice(0, m.index) : html;
+}
+
 function collectImages(html: string, base: string, fromLd: string[]): string[] {
-  // Candidatas con prioridad: ficha estructurada (0) > OpenGraph (1) > <img> (2).
-  // Dentro de cada nivel mandan las mas grandes: la principal suele ser la mayor.
-  const cands: Array<{ url: string; pri: number; w: number }> = [];
+  // Prioridad: ficha estructurada (0) > OpenGraph (1) > <img> de la ficha (2).
+  const cands: Array<{ url: string; pri: number; w: number; gal: number; slug: number }> = [];
   const seen = new Set<string>();
-  const push = (s: string, pri: number, w = 0) => {
+  const push = (s: string, pri: number, w = 0, gal = 0) => {
     const abs = absolute(decodeEntities(s).trim(), base);
     if (!abs || !usableImage(abs) || seen.has(abs)) return;
     seen.add(abs);
-    cands.push({ url: abs, pri, w });
+    cands.push({ url: abs, pri, w, gal, slug: 0 });
   };
 
   fromLd.forEach((s) => push(s, 0));
@@ -278,49 +290,52 @@ function collectImages(html: string, base: string, fromLd: string[]): string[] {
     if (c) push(c, 1);
   }
 
-  // <img>: saltamos miniaturas declaradas; del srcset tomamos el mayor.
-  const imgs = html.matchAll(/<img\b[^>]*>/gi);
+  // <img>: SOLO dentro de la ficha (corta antes de relacionados/upsells).
+  const scoped = productScope(html);
+  const galRanges = [...scoped.matchAll(/woocommerce-product-gallery|product-gallery|product__media|gallery-main|product-media|zoomWrapper/i)].map((m) => m.index);
+  const imgs = scoped.matchAll(/<img\b[^>]*>/gi);
   for (const t of imgs) {
     const tag = t[0];
+    const pos = t.index || 0;
     const w = Number(tag.match(/\bwidth\s*=\s*["']?(\d+)/i)?.[1] || 0);
     const h = Number(tag.match(/\bheight\s*=\s*["']?(\d+)/i)?.[1] || 0);
     if ((w && w < 200) || (h && h < 200)) continue;
+    const gal = galRanges.some((g) => g <= pos && pos - g < 4000) ? 1 : 0;
     const srcset = tag.match(/\bsrcset\s*=\s*["']([^"']+)["']/i)?.[1];
     if (srcset) {
       const parts = srcset.split(",").map((p) => p.trim().split(/\s+/));
       const withW = parts.map(([u, d]) => ({ u, w: parseInt(d || "0") || 0 })).filter((x) => x.u);
       withW.sort((a, b) => b.w - a.w);
-      if (withW[0]) push(withW[0].u, 2, withW[0].w);
+      if (withW[0]) push(withW[0].u, 2, withW[0].w, gal);
     }
     const src =
       tag.match(/\bsrc\s*=\s*["']([^"']+)["']/i)?.[1] ||
       tag.match(/\bdata-src\s*=\s*["']([^"']+)["']/i)?.[1] ||
       tag.match(/\bdata-lazy-src\s*=\s*["']([^"']+)["']/i)?.[1];
-    if (src) push(src, 2, w);
+    if (src) push(src, 2, w, gal);
     if (cands.length > 40) break;
   }
-  cands.sort((a, b) => a.pri - b.pri || b.w - a.w);
-  // Deduplica la MISMA foto en varias resoluciones (-350x350, -1024x1024...):
-  // por clave base nos quedamos con la version original/grande (una sola).
-  const sizeSuffix = /[-_]\d+x\d+(?=\.\w+$)/i;
-  const baseKey = (u: string) => u.replace(/[-_]\d+x\d+(?=\.\w+$)/i, "");
-  const score = (c: { url: string; w: number }) => (sizeSuffix.test(c.url) ? 1 : 0) * 1e9 + (c.w ? 1e9 - c.w : 0);
-  const byKey = new Map<string, Array<{ url: string; pri: number; w: number }>>();
-  for (const c of cands) {
-    const k = baseKey(c.url);
-    const arr = byKey.get(k) || [];
-    arr.push(c);
-    byKey.set(k, arr);
-  }
-  const dedup: typeof cands = [];
-  for (const arr of byKey.values()) {
-    arr.sort((x, y) => score(x) - score(y));
-    dedup.push(arr[0]);
-  }
-  dedup.sort((a, b) => a.pri - b.pri || b.w - a.w);
-  return dedup.slice(0, 12).map((c) => c.url);
-}
 
+  // Bonus: el archivo contiene el slug del producto → es foto de ESTE producto.
+  const slug = base.replace(/[?#].*$/, "").replace(/\/+$/, "").split("/").pop() || "";
+  if (slug.length >= 4) {
+    const s = slug.toLowerCase();
+    for (const c of cands) if (c.url.toLowerCase().includes(s)) c.slug = 1;
+  }
+
+  cands.sort((a, b) => a.pri - b.pri || b.gal - a.gal || b.slug - a.slug || b.w - a.w);
+
+  // Deduplica la MISMA foto en varias resoluciones (-350x350, -1024x1024...):
+  // por clave base nos quedamos con la version original/grande.
+  const best = new Map<string, { url: string; size: number }>();
+  for (const c of cands) {
+    const k = c.url.replace(/[-_]\d+x\d+(?=\.\w+$)/i, "");
+    const size = /[-_]\d+x\d+(?=\.\w+$)/i.test(c.url) ? 1 : 0;
+    const cur = best.get(k);
+    if (!cur || size < cur.size) best.set(k, { url: c.url, size });
+  }
+  return [...best.values()].slice(0, 12).map((c) => c.url);
+}
 /** Videos utilizables: og:video, twitter player/stream, <video>/<source>, .mp4 sueltos. */
 function collectVideos(html: string, base: string): string[] {
   const out: string[] = [];
