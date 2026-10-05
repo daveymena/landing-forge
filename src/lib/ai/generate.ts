@@ -121,6 +121,8 @@ export interface GenerateOpts {
   baseSpec?: PageSpec;
   /** plantilla elegida manualmente en el dashboard */
   templateId?: string;
+  /** IA activa de Atlas (el bot la manda): si resuelve, genera con esa */
+  provider?: { providerId?: string; model?: string };
 }
 
 /** Fija en el spec los datos que vienen de una ficha real: el LLM escribe el
@@ -240,7 +242,7 @@ export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Pro
   } catch { palette = null; }
   const themed = (s: PageSpec) => (palette && palette.accent ? applyPalette(s, palette) : s);
 
-  const cfg = await resolveProvider();
+  const cfg = await resolveProvider(opts.provider);
   if (cfg.id === "none") {
     return {
       spec: themed(fallback),
@@ -273,6 +275,7 @@ export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Pro
       json: true,
       maxTokens: 6000,
       temperature: 0.8,
+      provider: opts.provider,
     });
     const raw = extractJson(res.text);
     const norm = normalizeToSpec(raw, prompt, fallback);
@@ -292,8 +295,8 @@ export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Pro
 
 /* ------------------------------- edición ------------------------------- */
 
-export async function editSpec(spec: PageSpec, instruction: string): Promise<EditResult> {
-  const cfg = await resolveProvider();
+export async function editSpec(spec: PageSpec, instruction: string, provider?: { providerId?: string; model?: string }): Promise<EditResult> {
+  const cfg = await resolveProvider(provider);
   if (cfg.id !== "none") {
     try {
       const res = await complete({
@@ -302,6 +305,7 @@ export async function editSpec(spec: PageSpec, instruction: string): Promise<Edi
         json: true,
         maxTokens: 6000,
         temperature: 0.5,
+        provider,
       });
       const raw = extractJson(res.text);
       const ops: EditOp[] = [];

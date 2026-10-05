@@ -250,7 +250,7 @@ async function execute(
 
   return { applied, cleared };
 }
-export async function runVisualBrain(spec: any): Promise<{ applied: number; cleared: number; ms: number } | null> {
+export async function runVisualBrain(spec: any, provider?: { providerId?: string; model?: string }): Promise<{ applied: number; cleared: number; ms: number } | null> {
   const t0 = Date.now();
   try {
     const slots = collectSlots(spec);
@@ -265,7 +265,7 @@ export async function runVisualBrain(spec: any): Promise<{ applied: number; clea
       ),
     ].join("\n");
 
-    const res = await complete({ system: systemPrompt(), user, json: true, maxTokens: 2400, temperature: 0.4 });
+    const res = await complete({ system: systemPrompt(), user, json: true, maxTokens: 2400, temperature: 0.4, provider });
     const parsed = parseJson(res.text);
     const decisions: Decision[] = Array.isArray(parsed.decisions) ? parsed.decisions : [];
     const remove: string[] = Array.isArray(parsed.removeUrls)
@@ -373,9 +373,9 @@ export function pruneEmptyVisuals(spec: any): { removedItems: number; removedBlo
  *  4) política final: testimonios/UGC sin foto → fuera.
  * Llamar SIEMPRE antes de saveSite.
  */
-export async function applyVisualPass(spec: any): Promise<void> {
+export async function applyVisualPass(spec: any, provider?: { providerId?: string; model?: string }): Promise<void> {
   try {
-    const brain = await runVisualBrain(spec);
+    const brain = await runVisualBrain(spec, provider);
     if (brain) console.log(`[VisualBrain] applied=${brain.applied} cleared=${brain.cleared} ms=${brain.ms}`);
     else {
       console.warn("[VisualBrain] sin respuesta del LLM → fill automático");

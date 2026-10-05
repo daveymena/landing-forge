@@ -103,13 +103,14 @@ export async function POST(req: Request) {
   // (antes siempre caia en cod-urgency/digital-vsl y todo se veia igual).
   const templateId = typeof body.templateId === "string" && body.templateId ? body.templateId : undefined;
 
-  const res = await generateSpec(prompt, { source, templateId, pro: body.pro === true });
+  const aiProvider = body.aiProvider && typeof body.aiProvider === "object" ? body.aiProvider : undefined;
+  const res = await generateSpec(prompt, { source, templateId, pro: body.pro === true, provider: aiProvider });
   const spec = res.spec;
 
   spec.settings.whatsapp = whatsapp || spec.settings.whatsapp || "";
   (spec.settings as any).checkoutUrl = checkout;
   // Pasada visual completa: cerebro en contexto, stock gratis, OpenAI de emergencia, prune.
-  await applyVisualPass(spec);
+  await applyVisualPass(spec, aiProvider);
   await saveSite(spec);
 
   const base = process.env.PUBLIC_APP_URL || new URL(req.url).origin;

@@ -78,8 +78,9 @@ export async function POST(req: Request) {
     pro: body.pro === true,
     templateId: typeof body.templateId === "string" ? body.templateId : undefined,
     baseSpec: body.baseSiteId ? (await getSite(String(body.baseSiteId))) || undefined : undefined,
+    provider: body.aiProvider && typeof body.aiProvider === "object" ? body.aiProvider : undefined,
   });
-  await applyVisualPass(res.spec);
+  await applyVisualPass(res.spec, body.aiProvider && typeof body.aiProvider === "object" ? body.aiProvider : undefined);
   if (body.save !== false) await saveSite(res.spec);
   return NextResponse.json({
     ...res,

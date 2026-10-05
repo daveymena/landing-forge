@@ -35,7 +35,7 @@ export interface ResolvedProvider {
   fallbacks: string[];
   temperature: number;
   /** de dónde salió la configuración, para mostrarlo en la UI */
-  source: "settings" | "env" | "none";
+  source: "settings" | "env" | "override" | "none";
 }
 
 /* ------------------------- catálogo de proveedores ------------------------- */
@@ -292,7 +292,7 @@ function fromEnv(): ResolvedProvider | null {
   return null;
 }
 
-export async function resolveProvider(): Promise<ResolvedProvider> {
+export async function resolveProvider(override?: { providerId?: string; model?: string }): Promise<ResolvedProvider> {
   const none: ResolvedProvider = {
     id: "none",
     model: "",
@@ -308,6 +308,20 @@ export async function resolveProvider(): Promise<ResolvedProvider> {
     saved = (await getSettings()).ai;
   } catch {
     saved = null;
+  }
+  // Override explícito por request (el bot pide la IA activa de Atlas para
+  // esta landing). Si el id no existe o le falta key, se ignora y se sigue
+  // con settings/env como siempre: nunca rompe una generación.
+  const want = String(override?.providerId || "").trim().toLowerCase();
+  if (want && want !== "auto") {
+    const meta = PROVIDER_BY_ID[want];
+    if (meta) {
+      const oKey = env(meta.envKeys.filter((k) => k.includes("KEY")));
+      const oBase = (env(meta.envKeys.filter((k) => k.includes("URL"))) || meta.defaultBaseUrl).replace(/\/+$/, "");
+      if (!meta.needsKey || oKey) {
+        return { id: meta.id, model: String(override?.model || "").trim() || meta.defaultModel, baseUrl: oBase, apiKey: oKey, fallbacks: [], temperature: 0.7, source: "override" };
+      }
+    }
   }
 
   if (saved && saved.provider && saved.provider !== "auto") {
@@ -471,8 +485,9 @@ export async function complete(opts: {
   json?: boolean;
   maxTokens?: number;
   temperature?: number;
+  provider?: { providerId?: string; model?: string };
 }): Promise<LlmResult> {
-  const cfg = await resolveProvider();
+  const cfg = await resolveProvider(opts.provider);
   if (cfg.id === "none") throw new Error("NO_LLM");
 
   const chain = [cfg.model, ...cfg.fallbacks].filter(Boolean);

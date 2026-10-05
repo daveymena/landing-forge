@@ -13,7 +13,8 @@ export async function POST(req: Request) {
   const instruction = String(body.instruction || "").trim();
   if (!instruction) return NextResponse.json({ error: "Falta la instrucción" }, { status: 400 });
 
-  const res = await editSpec(parsed.data, instruction);
+  const aiProvider = body.aiProvider && typeof body.aiProvider === "object" ? body.aiProvider : undefined;
+  const res = await editSpec(parsed.data, instruction, aiProvider);
   if (body.save !== false && res.ops.length) await saveSite(res.spec);
   return NextResponse.json(res);
 }
