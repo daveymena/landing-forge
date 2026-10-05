@@ -6,6 +6,8 @@ import { TEMPLATE_BY_ID } from "../templates";
 import { generateDeterministic } from "./deterministic";
 import { parseBrief } from "./brief";
 import { complete, extractJson, resolveProvider } from "./provider";
+import { analizarBrief, type AnalisisLanding } from "./analisis";
+import { chequearAIDA, revisionExperta } from "./revision";
 import { analyzePalette, type PaletteInfo } from "../palette";
 import { architectSystem, architectUser, editSystem, editUser } from "./prompts";
 import type { ExtractedProduct } from "../extract";
@@ -17,6 +19,8 @@ export interface GenerateResult {
   model: string;
   ms: number;
   warnings: string[];
+  /** Fase 1: el analisis previo (avatar/dolores/angulo). null si no corrio. */
+  analisis?: AnalisisLanding | null;
 }
 
 /** Normaliza lo que devuelve el LLM a un PageSpec válido y renderizable. */
@@ -123,6 +127,8 @@ export interface GenerateOpts {
   templateId?: string;
   /** IA activa de Atlas (el bot la manda): si resuelve, genera con esa */
   provider?: { providerId?: string; model?: string };
+  /** Origen del trafico ("facebook" por defecto en fisico): ajusta angulo y diseno. */
+  trafico?: string;
 }
 
 /** Fija en el spec los datos que vienen de una ficha real: el LLM escribe el
@@ -256,6 +262,32 @@ export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Pro
 
   const { id: pid, model } = cfg;
   const brief = parseBrief(prompt);
+  const avisos: string[] = [];
+
+  // ── Fase 1: ANALISIS previo (no crear por crear) ──────────────────────
+  // Avatar, dolores, promesa, angulo y objeciones ANTES de escribir el copy.
+  // Se inyecta al arquitecto y se devuelve para que el dueno vea el
+  // pensamiento. No bloquea: si falla, la generacion sigue igual.
+  let analisis: AnalisisLanding | null = null;
+  try {
+    const src0: any = opts.source || {};
+    const a = await analizarBrief(
+      {
+        producto: String(src0.name || (brief as any).productName || prompt).slice(0, 120),
+        precio: src0.price ? String(src0.price) : undefined,
+        moneda: src0.currency || (brief as any).currency,
+        pais: (brief as any).country,
+        trafico: opts.trafico || (brief.vertical === "cod" ? "facebook" : "organico"),
+        descripcion: String(src0.description || "").slice(0, 600),
+        vertical: brief.vertical,
+      },
+      opts.provider,
+    );
+    analisis = a.analisis;
+    if (a.warning) avisos.push(a.warning);
+  } catch (e: any) {
+    avisos.push(`Analisis previo no corrio (${String(e?.message || e).slice(0, 100)}).`);
+  }
   const effectivePrompt = tpl ? `[Plantilla elegida: ${tpl.name} — ${tpl.hint}. Tono: ${tpl.tone}] ${prompt}` : prompt;
   const baseSummary = opts.baseSpec
     ? `vertical=${opts.baseSpec.vertical} · tema=${opts.baseSpec.theme.preset}\n` +
@@ -271,6 +303,7 @@ export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Pro
         palette: palette || undefined,
         pro: opts.pro,
         baseSummary,
+        analisis: analisis || undefined,
       }),
       json: true,
       maxTokens: 6000,
@@ -279,8 +312,26 @@ export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Pro
     });
     const raw = extractJson(res.text);
     const norm = normalizeToSpec(raw, prompt, fallback);
-    const spec = themed(opts.source ? applySource(norm.spec, opts.source) : norm.spec);
-    return { spec, engine: "llm", provider: pid, model, ms: Date.now() - t0, warnings: norm.warnings };
+    let spec = themed(opts.source ? applySource(norm.spec, opts.source) : norm.spec);
+    avisos.push(...norm.warnings);
+
+    // ── Fase 3: REVISION EXPERTA (solo si el chequeo AIDA marca fallos) ──
+    // El copy bueno no paga segundo pase; el flojo lo corrige el experto.
+    const hallazgos = chequearAIDA(spec, spec.product?.name || "");
+    if (hallazgos.length) {
+      try {
+        const rev = await revisionExperta(spec, hallazgos, opts.provider);
+        if (rev.aplicadas > 0) {
+          spec = rev.spec;
+          avisos.push(`Revision experta: ${rev.aplicadas} ajustes AIDA${rev.detalle ? ` (${rev.detalle})` : ""}.`);
+        } else {
+          avisos.push(`Chequeo AIDA: ${hallazgos.length} observaciones sin corregir (${hallazgos.map((h) => h.bloque).join(", ")}).`);
+        }
+      } catch (e: any) {
+        avisos.push(`Revision experta no corrio (${String(e?.message || e).slice(0, 100)}).`);
+      }
+    }
+    return { spec, engine: "llm", provider: pid, model, ms: Date.now() - t0, warnings: avisos, analisis };
   } catch (e: any) {
     return {
       spec: themed(fallback),
@@ -314,7 +365,23 @@ export async function editSpec(spec: PageSpec, instruction: string, provider?: {
         if (parsed.success) ops.push(parsed.data);
       }
       if (ops.length) {
-        return { spec: applyOps(spec, ops), reply: String(raw?.reply || "Listo."), ops, engine: "llm" };
+        let final = applyOps(spec, ops);
+        let nota = String(raw?.reply || "Listo.");
+        // La edicion tambien pasa por el experto: un cambio de copy puede
+        // romper el AIDA (ej: titular vuelto al nombre del producto).
+        const hallazgos = chequearAIDA(final, final.product?.name || "");
+        if (hallazgos.length) {
+          try {
+            const rev = await revisionExperta(final, hallazgos, provider);
+            if (rev.aplicadas > 0) {
+              final = rev.spec;
+              nota += ` Revision experta: ${rev.aplicadas} ajustes AIDA.`;
+            }
+          } catch {
+            /* el cambio igual se guarda */
+          }
+        }
+        return { spec: final, reply: nota, ops, engine: "llm" };
       }
     } catch {
       /* cae al modo local */

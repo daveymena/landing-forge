@@ -104,7 +104,8 @@ export async function POST(req: Request) {
   const templateId = typeof body.templateId === "string" && body.templateId ? body.templateId : undefined;
 
   const aiProvider = body.aiProvider && typeof body.aiProvider === "object" ? body.aiProvider : undefined;
-  const res = await generateSpec(prompt, { source, templateId, pro: body.pro === true, provider: aiProvider });
+  const trafico = String(body.trafico || (kind === "digital" ? "organico" : "facebook"));
+  const res = await generateSpec(prompt, { source, templateId, pro: body.pro === true, provider: aiProvider, trafico });
   const spec = res.spec;
 
   spec.settings.whatsapp = whatsapp || spec.settings.whatsapp || "";
@@ -156,5 +157,6 @@ export async function POST(req: Request) {
     sections,
     engine: res.engine,
     warnings,
+    analisis: (res as any).analisis || undefined,
   });
 }

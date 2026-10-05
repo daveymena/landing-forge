@@ -3,6 +3,7 @@ import { PRESETS } from "../theme";
 import { templateListForPrompt } from "../templates";
 import { exemplarsBlock } from "./exemplars";
 import type { PageSpec } from "../schema";
+import type { AnalisisLanding } from "./analisis";
 
 const PLAYBOOK = `
 ESTRUCTURA PROBADA (2026). Primero elige UNA plantilla según el brief y respeta su flujo;
@@ -65,6 +66,15 @@ etiquetas o encabezados visibles. Nada de "Problema:" ni "Solucion:".
   sin inventar cifras falsas.
 · CIERRE DE OBJECIONES (faq): cada pregunta responde un "si, pero…" real del
   vertical que frena la compra; la respuesta reafirma la promesa + riesgo cero.
+
+TRAFICO FRIO DE FACEBOOK (cuando el brief dice Facebook/ads/trafico pago o es COD):
+El visitante llega frio desde un anuncio: no conoce la marca, decide en 3 segundos y compra desde el celular.
+· Congruencia: el hero repite la promesa del anuncio (mismo producto, mismo beneficio, mismo precio). Nada de sorpresas.
+· Gancho arriba del pliegue: H1 + subtitulo + CTA visible sin hacer scroll + foto del producto.
+· Confianza temprano: pago contra entrega y envio gratis ya en hero/announcement, no solo abajo.
+· Mobile primero: textos cortos, bloques que se apilan, CTA sticky siempre visible.
+· Un solo camino: cada CTA lleva al pedido (#pedido). Nada de links que distraen.
+· Colores que convierten: CTA en el acento a alto contraste sobre el fondo; announcement con urgencia real; garantia pegada al formulario.
 `.trim();
 
 export function architectSystem(): string {
@@ -111,7 +121,7 @@ export interface SourceData {
 
 export function architectUser(
   prompt: string,
-  hints?: { vertical?: string; preset?: string; source?: SourceData; pro?: boolean; baseSummary?: string; palette?: { accent: string; dark: boolean; roles: Array<{ wide: boolean }> } | null },
+  hints?: { vertical?: string; preset?: string; source?: SourceData; pro?: boolean; baseSummary?: string; analisis?: AnalisisLanding | null; palette?: { accent: string; dark: boolean; roles: Array<{ wide: boolean }> } | null },
 ): string {
   const src = hints?.source;
   const facts = src
@@ -137,12 +147,25 @@ No copies frases literales de la tienda original: reescríbelas con ángulo come
 `
     : "";
 
+  const an = hints?.analisis;
+  const analisisTxt = an
+    ? `
+ANALISIS ESTRATEGICO PREVIO (verdad para el angulo y el copy: usalo, no lo contradigas):
+- Avatar: ${an.avatar}
+- Dolores: ${an.dolores.join(" | ")}
+- Promesa: ${an.promesa}
+- Angulo: ${an.angulo}
+- Objeciones a cerrar en FAQ: ${an.objeciones.join(" | ")}
+- Tono: ${an.tono}
+`
+    : "";
+
   return `Brief del cliente:
 """
 ${prompt}
 """
 ${hints?.vertical ? `\nVertical sugerido: ${hints.vertical}` : ""}${hints?.preset ? `\nTema sugerido: ${hints.preset}` : ""}
-${facts}
+${facts}${analisisTxt}
 1. Elige la plantilla cuyo vertical y keywords encajen mejor con el brief.
 2. Usa su theme.preset salvo que el brief pida otro estilo explícito.
 - REGLA DURA: si NO hay videos reales listados arriba, JAMAS uses la variante vsl ni bloques video: usa split/product/centered con las fotos.
