@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { deleteSite, getSite, saveSite } from "@/lib/db";
 import { PageSpecSchema } from "@/lib/schema";
+import { fillSectionImages } from "@/lib/stock";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const body = await req.json().catch(() => ({}));
   const parsed = PageSpecSchema.safeParse({ ...body.spec, id });
   if (!parsed.success) return NextResponse.json({ error: "PageSpec inválido", issues: parsed.error.issues.slice(0, 5) }, { status: 400 });
+  await fillSectionImages(parsed.data);
   const saved = await saveSite(parsed.data);
   return NextResponse.json({ spec: saved });
 }

@@ -1,5 +1,5 @@
 import { complete } from "@/lib/ai/provider";
-import { searchStock, generateImage, enhanceImage, type StockKind } from "@/lib/stock";
+import { searchStock, generateImage, enhanceImage, fillSectionImages, type StockKind } from "@/lib/stock";
 
 /* ------------------------------------------------------------------ *
  * CEREBRO VISUAL — agente especializado en la imagen de cada espacio.
@@ -333,4 +333,71 @@ export function pruneEmptyVisuals(spec: any): { removedItems: number; removedBlo
     console.log(`[VisualBrain] prune: -${removedItems} items, -${removedBlocks} bloques sin foto`);
   }
   return { removedItems, removedBlocks };
+}
+
+/**
+ * Pasada visual COMPLETA para cualquier spec:
+ *  1) cerebro visual (decide en contexto),
+ *  2) si el LLM no respondió → relleno automático con stock,
+ *  3) lo que siga vacío → se GENERA con OpenAI (último recurso),
+ *  4) política final: testimonios/UGC sin foto → fuera.
+ * Llamar SIEMPRE antes de saveSite.
+ */
+export async function applyVisualPass(spec: any): Promise<void> {
+  try {
+    const brain = await runVisualBrain(spec);
+    if (brain) console.log(`[VisualBrain] applied=${brain.applied} cleared=${brain.cleared} ms=${brain.ms}`);
+    else {
+      console.warn("[VisualBrain] sin respuesta del LLM → fill automático");
+      await fillSectionImages(spec);
+    }
+  } catch (e: any) {
+    console.warn("[VisualBrain] error → fill automático:", e?.message || e);
+    await fillSectionImages(spec);
+  }
+  await emergencyFill(spec);
+  pruneEmptyVisuals(spec);
+}
+
+/** Último recurso: los slots que quedaron vacíos se GENERAN con OpenAI. */
+async function emergencyFill(spec: any): Promise<void> {
+  const product = String(spec?.product?.name || "").trim().slice(0, 60);
+  const jobs: Array<{ set: (u: string) => void; prompt: string }> = [];
+  const blocks: any[] = Array.isArray(spec?.blocks) ? spec.blocks : [];
+  for (const b of blocks) {
+    if (b?.visible === false) continue;
+    const p = b.props || {};
+    if (b.type === "testimonials" && Array.isArray(p.items)) {
+      for (const it of p.items) {
+        if (it && !String(it.avatar || "").trim()) {
+          jobs.push({
+            set: (u) => (it.avatar = u),
+            prompt: `Photorealistic professional headshot portrait of a happy customer, natural skin, soft studio light, neutral dark background, no text`,
+          });
+        }
+      }
+    }
+    if (b.type === "reviewsUgc" && Array.isArray(p.items)) {
+      for (const it of p.items) {
+        if (it && !String(it.image || "").trim()) {
+          jobs.push({
+            set: (u) => (it.image = u),
+            prompt: `Photorealistic candid lifestyle photo of a customer${product ? ` using or holding ${product}` : " enjoying a purchase"}, natural light, home setting, no text`,
+          });
+        }
+      }
+    }
+  }
+  if (!jobs.length) return;
+  console.log(`[VisualBrain] emergencyFill: generando ${jobs.length} con OpenAI`);
+  await Promise.all(
+    jobs.map(async (j) => {
+      try {
+        const u = await generateImage(j.prompt);
+        if (u) j.set(u);
+      } catch {
+        /* se pruneará abajo */
+      }
+    }),
+  );
 }

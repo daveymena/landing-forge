@@ -4,6 +4,7 @@ import { saveSite, getSite } from "@/lib/db";
 import { resolveProvider, PROVIDER_BY_ID } from "@/lib/ai/provider";
 import { extractFromUrl, type ExtractedProduct } from "@/lib/extract";
 import { parseBrief } from "@/lib/ai/brief";
+import { applyVisualPass } from "@/lib/visual-brain";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -78,6 +79,7 @@ export async function POST(req: Request) {
     templateId: typeof body.templateId === "string" ? body.templateId : undefined,
     baseSpec: body.baseSiteId ? (await getSite(String(body.baseSiteId))) || undefined : undefined,
   });
+  await applyVisualPass(res.spec);
   if (body.save !== false) await saveSite(res.spec);
   return NextResponse.json({
     ...res,
