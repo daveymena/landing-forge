@@ -442,7 +442,7 @@ async function callOnce(
   }
 
   /* dialecto OpenAI: openai, groq, ollama, openrouter, opencode, custom */
-  const useCompletionTokens = /gpt-6|gpt-5\.6|luna/i.test(model);
+  const useCompletionTokens = /gpt-[5-9]|gpt-6|luna/i.test(model);
   const body: any = {
     model,
     messages: [
@@ -463,10 +463,21 @@ async function callOnce(
   try {
     data = await post(`${base}/chat/completions`, authHeaders(cfg), body);
   } catch (e: any) {
+    const msg = String(e?.message || "");
     // algunos servidores rechazan response_format: reintentamos sin él
-    if (body.response_format && /response_format|json_object|unsupported|invalid/i.test(String(e.message))) {
+    if (body.response_format && /response_format|json_object|unsupported|invalid/i.test(msg)) {
       delete body.response_format;
       data = await post(`${base}/chat/completions`, authHeaders(cfg), body);
+    } else if (/Unsupported parameter|Unsupported value/i.test(msg)) {
+      // Modelos estrictos (GPT-5+/Luna): max_tokens, temperature != 1 o
+      // penalties directamente no existen. Se saca el que reclama y se repite.
+      const m = msg.match(/Unsupported parameter: '([^']+)'/i) || msg.match(/Unsupported value: '([^']+)'/i);
+      if (m && m[1] in body) {
+        delete body[m[1]];
+        data = await post(`${base}/chat/completions`, authHeaders(cfg), body);
+      } else {
+        throw e;
+      }
     } else {
       throw e;
     }
