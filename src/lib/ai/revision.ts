@@ -151,6 +151,15 @@ export function chequearAIDA(spec: PageSpec, nombreProducto: string): HallazgoAI
     if (items.length > 0 && creibles.length < Math.min(3, items.length)) {
       out.push({ bloque: "reviews", problema: "resenas sin detalle concreto: nombre + ciudad + medida real (dias de entrega, resultado)" });
     }
+    // La cita no repite el nombre/ciudad (van en sus campos): si no, sale duplicado.
+    const repetidas = items.filter((it: any) => {
+      const q = String(it?.quote || it?.text || "").trim().toLowerCase();
+      const n = String(it?.name || it?.nombre || "").trim().toLowerCase().split(/\s+/)[0];
+      return n && n.length > 2 && (q.startsWith(n) || q.startsWith(n + ","));
+    });
+    if (repetidas.length) {
+      out.push({ bloque: "reviews", problema: "la cita repite el nombre/ciudad del campo nombre: la cita es solo el testimonio" });
+    }
   }
 
   // ── Urgencia visible y honesta ──

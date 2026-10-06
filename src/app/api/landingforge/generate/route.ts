@@ -156,7 +156,9 @@ export async function POST(req: Request) {
     sectionsGenerated: spec.blocks.length,
     sections,
     engine: res.engine,
-    warnings,
+    // Los avisos del motor (analisis, chequeo AIDA, revision experta,
+    // determinista) SI se devuelven: si no, el dueno nunca ve el pensamiento.
+    warnings: [...warnings, ...((res as any).warnings || [])],
     analisis: (res as any).analisis || undefined,
   });
 }
