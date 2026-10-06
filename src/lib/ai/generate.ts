@@ -233,7 +233,7 @@ function rellenarTitulos(spec: PageSpec): PageSpec {
   return {
     ...spec,
     blocks: spec.blocks.map((b: any) => {
-      if (!CON_TITULOS_OBLIGADO.includes(b?.type)) return b;
+      if (!CON_TITULO_OBLIGADO.includes(b?.type)) return b;
       const p: any = { ...(b.props as any) };
       if (!String(p.title || "").trim()) {
         const d = (BY_TYPE[b.type] as any)?.defaults?.title;
