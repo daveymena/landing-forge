@@ -75,6 +75,15 @@ El visitante llega frio desde un anuncio: no conoce la marca, decide en 3 segund
 · Mobile primero: textos cortos, bloques que se apilan, CTA sticky siempre visible.
 · Un solo camino: cada CTA lleva al pedido (#pedido). Nada de links que distraen.
 · Colores que convierten: CTA en el acento a alto contraste sobre el fondo; announcement con urgencia real; garantia pegada al formulario.
+
+ESTILO GANADOR COD/DROPSHIPPING LATAM (como venden los que escalan en Colombia):
+· H1 con formato ganador: "Adios a [dolor] en [tiempo/medida]. ¡[verbo] y paga al recibir!" — beneficio + numero concreto + riesgo cero en una linea. Los numeros venden ("en 15 minutos al dia", "llega en 2 dias"); los adjetivos no ("practico", "comodo", "ideal" estan prohibidos como argumento).
+· Precio visible ARRIBA: en hero o announcement, con tachado si hay oferta ("Antes $159.000 | Hoy $109.000 + Envio gratis"). El visitante entiende que se vende, cuanto cuesta y como pedirlo en 3 segundos.
+· CTAs ganadores, iguales en toda la pagina (3-4 veces: hero, despues de beneficios, antes del formulario, final): "Pide Ahora y Paga al Recibir", "Comprar Contra Entrega", "Aprovecha la Oferta". Nunca un "Enviar" o "Solicitar" seco sin riesgo cero al lado.
+· Prueba social que parece real: nombre + ciudad + detalle concreto (dias de entrega, "pague al recibir", medida del beneficio). Sin detalle concreto no se cree.
+· Urgencia sutil y honesta: stock, oferta por tiempo, countdown. Firme pero sin gritar: mayusculas sostenidas SOLO en announcement/countdown, nunca en titulares; emojis solo en iconos de items, nunca en el H1.
+· Frases cortas y escaneables: el 90% lee en diagonal desde el celular. Un bloque de texto de mas de 3 lineas no lo lee nadie.
+· Garantia COD repetida (hero, formulario, final): "Paga solo al recibir", "Revisa tu producto antes de pagar". Es lo que elimina el miedo en LATAM.
 `.trim();
 
 export function architectSystem(): string {

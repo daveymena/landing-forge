@@ -16,6 +16,30 @@ const VERBO_ACCION = /\b(pide|píd|pídel[oa]|solicita|solicitar|compra|comprar|
 /** Verbos de resultado para beneficios (transformación, no inventario). */
 const VERBO_RESULTADO = /\b(ahorra|evita|olvida|olvída|disfruta|consigue|logra|protege|llega|lleva|duerme|viaja|gana|recupera|elimina|reduce|mejora|siente|vive)\w*/i;
 
+const CAMPOS_TEXTO = ["title", "heading", "subtitle", "text", "body", "paragraph", "cta", "ctaText", "q", "question", "a", "answer", "quote", "caption", "badge", "eyebrow"];
+const textosDeProps = (p: any): string[] => {
+  if (!p || typeof p !== "object") return [];
+  const acc: string[] = [];
+  for (const [k, v] of Object.entries(p)) {
+    if (typeof v === "string" && CAMPOS_TEXTO.includes(k)) acc.push(v);
+    else if (Array.isArray(v)) for (const it of v) acc.push(...textosDeProps(it));
+    else if (v && typeof v === "object" && !Array.isArray(v)) {
+      // items anidados (faq/reviews) sin bajar a image/src/url
+      if (/item|review|question|answer|quote/i.test(k)) acc.push(...textosDeProps(v));
+    }
+  }
+  return acc;
+};
+const todoTextos = (blocks: any[]): string => blocks.map((b: any) => textosDeProps(b?.props).join(" ")).join(" ");
+const preciosEnTextos = (blocks: any[]): number[] => {
+  const nums: number[] = [];
+  for (const m of todoTextos(blocks).matchAll(/(\d[\d\.,]*)/g)) {
+    const n = Number(m[1].replace(/[\.,]/g, ""));
+    if (isFinite(n) && String(Math.trunc(n)).length >= 4) nums.push(Math.trunc(n));
+  }
+  return nums;
+};
+
 const tituloDe = (p: any): string => String(p?.title || p?.heading || "").trim();
 const textoDe = (p: any): string =>
   [p?.title, p?.heading, p?.subtitle, p?.text, p?.body, p?.paragraph].filter(Boolean).join(" ");
@@ -88,6 +112,53 @@ export function chequearAIDA(spec: PageSpec, nombreProducto: string): HallazgoAI
     out.push({ bloque: "cta", problema: "el cierre no tiene un pedido claro con verbo (Pídelo, Solicita, Aprovecha…)" });
   }
 
+  // ── Precio visible arriba del pliegue ──
+  const arriba = [blocks.find((b: any) => b?.type === "hero"), blocks.find((b: any) => b?.type === "announcement")]
+    .map((b: any) => textoDe(b?.props))
+    .join(" ");
+  if (!/[\$]|\bCOP\b|precio/i.test(arriba)) {
+    out.push({ bloque: "hero", problema: "el precio no se ve arriba del pliegue: el visitante debe entender que, cuanto y como pedirlo en 3 segundos" });
+  }
+
+  // ── CTA ganador (verbo + riesgo cero), no generico ──
+  if (!/(paga al recibir|contra entrega|aprovecha|ahora|hoy)/i.test(textosCierre)) {
+    out.push({ bloque: "cta", problema: 'CTA generico: usa textos ganadores repetidos ("Pide Ahora y Paga al Recibir") con riesgo cero al lado' });
+  }
+
+  // ── Prueba social con detalle concreto ──
+  const social = blocks.find((b: any) => /review|testimon/i.test(b?.type)) as any;
+  if (social) {
+    const items = Array.isArray(social.props?.items) ? social.props.items : [];
+    const creibles = items.filter(
+      (it: any) => String(it?.quote || it?.text || "").trim().length >= 30 && String(it?.name || it?.nombre || "").trim().length > 1,
+    );
+    if (items.length > 0 && creibles.length < Math.min(3, items.length)) {
+      out.push({ bloque: "reviews", problema: "resenas sin detalle concreto: nombre + ciudad + medida real (dias de entrega, resultado)" });
+    }
+  }
+
+  // ── Urgencia visible y honesta ──
+  if (!/(stock|oferta|quedan|descuento|env[ií]o gratis|lanzamiento)/i.test(todoTextos(blocks))) {
+    out.push({ bloque: "urgencia", problema: "no hay urgencia visible (stock, oferta, envio gratis): el cliente pospone y no vuelve" });
+  }
+
+  // ── Coherencia de precios en los textos ──
+  // Vale: precio, tachado, ahorro (tachado-precio) y cuotas de bundle. Lo demas es numero inventado.
+  const price = Number(spec.product?.price) || 0;
+  const compare = Number(spec.product?.compareAtPrice) || 0;
+  const ahorro = compare > price ? compare - price : 0;
+  const bundleNums = new Set<number>();
+  for (const b of blocks as any[]) {
+    const opts = b?.props?.options;
+    if (Array.isArray(opts)) for (const o of opts) { if (Number(o?.price) > 0) bundleNums.add(Number(o.price)); if (Number(o?.compareAtPrice) > 0) bundleNums.add(Number(o.compareAtPrice)); }
+  }
+  const validos = new Set([price, compare, ahorro, ...bundleNums].filter((n) => n > 0));
+  const mencionados = preciosEnTextos(blocks);
+  const raros = [...new Set(mencionados)].filter((n) => !validos.has(n));
+  if (price > 0 && raros.length) {
+    out.push({ bloque: "precio", problema: `precios incoherentes en los textos: ${raros.join(", ")} (vale ${price}${compare ? `, tachado ${compare}` : ""})` });
+  }
+
   // ── FAQ que cierra objeciones ──
   const faq = blocks.find((b: any) => b?.type === "faq") as any;
   if (faq) {
@@ -108,8 +179,9 @@ MÉTODO (implícito: PROHIBIDO rotular con problema/solución/AIDA/atención/int
 - Títulos con gancho de dolor+deseo, nunca solo el nombre del producto.
 - Dolores concretos en lenguaje del cliente, cada uno con su consecuencia.
 - Beneficios como transformación (cómo queda la vida después).
-- CTA con verbo + riesgo cero (pago contra entrega, garantía) + urgencia honesta.
-- FAQ que cierra objeciones reales con promesa + riesgo cero.
+- CTA con verbo + riesgo cero (pago contra entrega, garantía) + urgencia honesta. Textos ganadores repetidos ("Pide Ahora y Paga al Recibir"): nunca un "Enviar" seco.
+- Precio visible arriba del pliegue (con tachado si hay oferta): el visitante entiende qué, cuánto y cómo pedirlo en 3 segundos.
+- Prueba social con detalle concreto (ciudad + días de entrega o medida del beneficio): sin detalle no se cree.
 Corrige SOLO lo marcado. No toques precios, fotos, theme ni bloques que están bien.`;
 
 /**
