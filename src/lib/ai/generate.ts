@@ -236,7 +236,8 @@ function rellenarTitulos(spec: PageSpec): PageSpec {
       if (!CON_TITULO_OBLIGADO.includes(b?.type)) return b;
       const p: any = { ...(b.props as any) };
       if (!String(p.title || "").trim()) {
-        const d = (BY_TYPE[b.type] as any)?.defaults?.title;
+        // withDefaults con props vacias = los defaults del catalogo.
+        const d = (withDefaults(b.type, {}) as any)?.title;
         if (d && String(d).trim()) p.title = String(d);
       }
       return { ...b, props: p };

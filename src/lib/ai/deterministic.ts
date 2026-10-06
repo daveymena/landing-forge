@@ -260,7 +260,7 @@ function digitalBlocks(b: Brief): Block[] {
     }),
     B("logos", "row", { title: "Nuestros estudiantes trabajan en" }),
     B("problem", "cards", {
-      eyebrow: "El problema",
+      eyebrow: "",
       title: "Si esto te suena familiar, no es culpa tuya",
       items: [
         { icon: "🌀", title: "Información dispersa", text: "Mil videos gratis y ninguno te dice en qué orden hacer las cosas." },
@@ -455,7 +455,7 @@ function serviceBlocks(b: Brief): Block[] {
     }),
     B("logos", "row", { title: "Marcas con las que hemos trabajado" }),
     B("problem", "cards", {
-      eyebrow: "El problema",
+      eyebrow: "",
       title: "Por qué la mayoría se queda estancada",
       items: [
         { icon: "🎯", title: "Sin foco", text: "Se hacen muchas cosas a la vez y ninguna lo suficientemente bien." },

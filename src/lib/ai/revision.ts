@@ -1,5 +1,5 @@
 import { applyOps, EditOpSchema, type EditOp, type PageSpec } from "../schema";
-import { condensedSchema } from "../blocks/catalog";
+import { BY_TYPE, condensedSchema, withDefaults } from "../blocks/catalog";
 import { complete, extractJson } from "./provider";
 
 export interface HallazgoAIDA {
@@ -154,8 +154,13 @@ export function chequearAIDA(spec: PageSpec, nombreProducto: string): HallazgoAI
     // La cita no repite el nombre/ciudad (van en sus campos): si no, sale duplicado.
     const repetidas = items.filter((it: any) => {
       const q = String(it?.quote || it?.text || "").trim().toLowerCase();
-      const n = String(it?.name || it?.nombre || "").trim().toLowerCase().split(/\s+/)[0];
-      return n && n.length > 2 && (q.startsWith(n) || q.startsWith(n + ","));
+      const partes = String(it?.name || it?.nombre || "").trim().toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+      if (!partes.length) return false;
+      const primero = esc(partes[0]);
+      const completo = partes.length > 1 ? esc(partes.slice(0, 2).join(" ")) : "";
+      // Empieza con el nombre, lo trae al final como firma ("- Sandra"), o
+      // incluye nombre+apellido dentro: en los tres casos sale duplicado.
+      return q.startsWith(partes[0]) || (completo !== "" && q.includes(completo)) || new RegExp(`[\u2014\u2013\-]\s*${primero}`).test(q);
     });
     if (repetidas.length) {
       out.push({ bloque: "reviews", problema: "la cita repite el nombre/ciudad del campo nombre: la cita es solo el testimonio" });
@@ -196,6 +201,43 @@ export function chequearAIDA(spec: PageSpec, nombreProducto: string): HallazgoAI
   return out;
 }
 
+const esc = (t: string): string => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Las ops del experto pasan por el MISMO filtro que la generacion.
+ *
+ * Sin esto un addBlock con type inventado ("Problem", "dolor") entra al spec,
+ * no se renderiza, y el chequeo lo vuelve a pedir para siempre: el bloque
+ * problem "reparado" varias veces seguia sin titulo porque lo insertado no
+ * era el type exacto. Se normaliza (type/variante/props con defaults) o se
+ * descarta; nunca se guarda roto.
+ */
+function normalizarOpsReparacion(spec: PageSpec, ops: EditOp[]): { ops: EditOp[]; descartadas: number } {
+  const validas: EditOp[] = [];
+  let descartadas = 0;
+  const tipos = Object.keys(BY_TYPE || {});
+  for (const o of ops) {
+    if ((o as any).op === "addBlock") {
+      const t = String((o as any)?.block?.type || "");
+      const canon = tipos.find((k) => k === t) || tipos.find((k) => k.toLowerCase() === t.toLowerCase());
+      if (!canon) { descartadas++; continue; }
+      const b: any = { ...((o as any).block || {}), type: canon };
+      const vars = (((BY_TYPE as any)[canon] as any)?.variants || []).map((v: any) => v?.value ?? v);
+      if (!vars.includes(b.variant)) b.variant = vars[0];
+      b.props = withDefaults(canon, b.props && typeof b.props === "object" ? b.props : {});
+      if (!b.id) b.id = canon.slice(0, 3) + "_" + Math.random().toString(36).slice(2, 8);
+      validas.push({ ...(o as any), block: b } as EditOp);
+      continue;
+    }
+    if ((o as any).op === "setProp") {
+      const existe = (spec.blocks as any[]).some((x) => x?.id === (o as any).blockId);
+      if (!existe) { descartadas++; continue; }
+    }
+    validas.push(o);
+  }
+  return { ops: validas, descartadas };
+}
+
 const SISTEMA_EXPERTO = `Eres un director de arte y copywriter de respuesta directa para tráfico frío de Facebook en Latinoamérica (deciden en 3 segundos desde el celular, pagan contra entrega).
 Recibes una landing y la lista de fallos que marcó el chequeo AIDA. Devuelves SIEMPRE un único objeto JSON, sin markdown:
 { "ops": [ ...operaciones... ], "reply": "una frase con lo que corregiste" }
@@ -230,11 +272,13 @@ export async function revisionExperta(
     provider,
   });
   const raw = extractJson(res.text) as any;
-  const ops: EditOp[] = [];
+  const crudas: EditOp[] = [];
   for (const o of raw?.ops ?? []) {
     const parsed = EditOpSchema.safeParse(o);
-    if (parsed.success) ops.push(parsed.data);
+    if (parsed.success) crudas.push(parsed.data);
   }
-  if (!ops.length) return { spec, aplicadas: 0, detalle: "" };
-  return { spec: applyOps(spec, ops), aplicadas: ops.length, detalle: String(raw?.reply || "").slice(0, 160) };
+  const norm = normalizarOpsReparacion(spec, crudas);
+  if (!norm.ops.length) return { spec, aplicadas: 0, detalle: norm.descartadas ? `${norm.descartadas} descartadas por invalidas` : "" };
+  const detalle = String(raw?.reply || "").slice(0, 160) + (norm.descartadas ? ` (${norm.descartadas} descartadas por invalidas)` : "");
+  return { spec: applyOps(spec, norm.ops), aplicadas: norm.ops.length, detalle };
 }
