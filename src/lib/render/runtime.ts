@@ -100,6 +100,23 @@ var SELECTED={qty:1,price:0,label:''};
   if(pre)pick(pre);
 })();
 
+/* ---------- variantes (color/talla): una por grupo ---------- */
+function selectedVariant(form){
+  var parts=[];
+  $$('[data-lf-variant]',form).forEach(function(g){
+    var on=$('[aria-pressed="true"]',g);
+    if(on)parts.push(on.getAttribute('data-val'));
+  });
+  return parts.join(' / ');
+}
+$$('[data-lf-variant] button').forEach(function(b){
+  b.addEventListener('click',function(){
+    var g=b.closest('[data-lf-variant]');
+    $$('button',g).forEach(function(x){x.setAttribute('aria-pressed',String(x===b))});
+    syncSummary();
+  });
+});
+
 /* ---------- cantidad + resumen ---------- */
 function syncSummary(){
   var form=$('[data-lf-form]'); if(!form) return;
@@ -113,6 +130,9 @@ function syncSummary(){
   if(sq)sq.textContent='× '+qty;
   if(ss)ss.textContent=fmt(sub);
   if(st)st.textContent=fmt(sub+ship);
+  var combo=form?selectedVariant(form):'';
+  var sv=$('[data-lf-sumvar]');
+  if(sv&&combo)sv.textContent=combo;
   var sv=$('.sticky-bar__v');
   if(sv&&sub)sv.firstChild&&(sv.childNodes[0].nodeValue=fmt(sub+ship));
 }
@@ -175,6 +195,8 @@ $$('[data-lf-form]').forEach(function(form){
     payload.currency=CUR;
     payload.pageUrl=location.href;
     payload.utm=location.search;
+    var combo=selectedVariant(form);
+    if(combo){payload.variant=combo;try{var vm=JSON.parse(form.getAttribute('data-variation-map')||'{}');if(vm[combo])payload.variationId=vm[combo]}catch(e){}}
     if(SELECTED.price){payload.quantity=SELECTED.qty;payload.bundle=SELECTED.label;payload.total=SELECTED.price}
     else{
       var unit=parseFloat(form.getAttribute('data-unit-price')||'0');
@@ -208,7 +230,7 @@ $$('[data-lf-form]').forEach(function(form){
           var t='Hola! Quiero hacer este pedido:%0A'+encodeURIComponent(
             (payload.name||'')+' '+(payload.surname||'')+'%0ATel: '+(payload.phone||'')+
             '%0ACiudad: '+(payload.city||'')+', '+(payload.state||'')+'%0ADir: '+(payload.dir||'')+
-            '%0ACantidad: '+payload.quantity+'%0ATotal: '+fmt(payload.total));
+            '%0ACantidad: '+payload.quantity+(payload.variant?'%0AVariante: '+encodeURIComponent(payload.variant):'')+'%0ATotal: '+fmt(payload.total));
           if(msg){msg.className='formmsg ok';msg.innerHTML='Te estamos redirigiendo a WhatsApp para confirmar tu pedido…'}
           setTimeout(function(){location.href='https://wa.me/'+wa+'?text='+t},700);
         }else if(msg){

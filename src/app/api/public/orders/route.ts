@@ -66,6 +66,8 @@ export async function POST(req: Request) {
     shipping: Math.max(0, Number(body.shipping) || 0),
     currency: clean(body.currency, 4) || "COP",
     bundle: clean(body.bundle, 60),
+    variant: clean(body.variant, 120),
+    variationId: clean(body.variationId, 64),
     pageUrl: clean(body.pageUrl, 400),
     utm: clean(body.utm, 300),
     ip,
@@ -115,12 +117,12 @@ export async function POST(req: Request) {
         state: payload.state,
         city: payload.city,
         address: payload.dir,
-        notes: [payload.notes, payload.bundle ? `Oferta: ${payload.bundle}` : ""].filter(Boolean).join(" · "),
+        notes: [payload.notes, payload.bundle ? `Oferta: ${payload.bundle}` : "", payload.variant ? `Variante: ${payload.variant}` : ""].filter(Boolean).join(" · "),
         quantity: payload.quantity,
         total: payload.total,
         withCollection: true,
         productId: site?.product.dropiProductId,
-        variationId: site?.product.dropiVariationId,
+        variationId: payload.variationId || site?.product.dropiVariationId,
       });
       record.provider = "dropi";
       if (res.ok) {
@@ -160,7 +162,7 @@ export async function POST(req: Request) {
   if (wa && kind === "cod") {
     const msg =
       `Hola ${payload.name}! 👋 Confirmamos tu pedido${site?.product.name ? ` de *${site.product.name}*` : ""}.\n` +
-      `• Cantidad: ${payload.quantity}${payload.bundle ? ` (${payload.bundle})` : ""}\n` +
+      `• Cantidad: ${payload.quantity}${payload.bundle ? ` (${payload.bundle})` : ""}${payload.variant ? ` — ${payload.variant}` : ""}\n` +
       `• Total a pagar al recibir: ${payload.total.toLocaleString("es-CO")} ${payload.currency}\n` +
       `• Dirección: ${payload.dir}, ${payload.city} (${payload.state})\n` +
       `¿Confirmas que los datos están correctos?`;

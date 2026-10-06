@@ -181,6 +181,29 @@ export function chequearAIDA(spec: PageSpec, nombreProducto: string, vertical = 
     out.push({ bloque: "urgencia", problema: "no hay urgencia visible (stock, oferta, envio gratis): el cliente pospone y no vuelve" });
   }
 
+  // ── Formulario: cantidad + resumen (si no, no se puede pedir más de uno) ──
+  const forms = (blocks as any[]).filter((b) => b?.type === "codForm" || b?.type === "leadForm");
+  if (forms.some((b: any) => b?.type === "codForm" && (b.props as any)?.askQuantity !== true)) {
+    out.push({ bloque: "formulario", problema: "el formulario no deja pedir más de uno: codForm con askQuantity:true" });
+  }
+  if (forms.some((b: any) => b?.type === "codForm" && (b.props as any)?.showSummary !== true)) {
+    out.push({ bloque: "formulario", problema: "el formulario no muestra resumen/total: codForm con showSummary:true" });
+  }
+  // Si el producto trae variantes y el form las apaga, nadie las puede elegir.
+  const hayVariantes = Array.isArray((spec.product as any)?.variants) && (spec.product as any).variants.some((v: any) => v?.name && Array.isArray(v.options) && v.options.length > 0);
+  if (hayVariantes && forms.some((b: any) => b?.type === "codForm" && (b.props as any)?.askVariants === false)) {
+    out.push({ bloque: "formulario", problema: "el producto tiene variantes (color/talla) pero el formulario las apaga: askVariants distinto de false" });
+  }
+
+  // ── Precio repetido fuera de su lugar ──
+  // El precio vive en announcement/hero/badge, bundle y formulario. Si aparece
+  // en beneficios/faq/reseñas/problemas/garantía, el copy repite y abarata.
+  const ZONAS_PRECIO = ["announcement", "hero", "bundle", "codForm", "ctaFinal", "stickyCta"];
+  const fuera = (blocks as any[]).filter((b) => !ZONAS_PRECIO.includes(b?.type) && preciosEnTextos([b]).length > 0);
+  if (fuera.length) {
+    out.push({ bloque: "precio", problema: `precio repetido en ${[...new Set(fuera.map((b) => b.type))].join(", ")}: el precio vive en hero/bundle/formulario, no en el copy` });
+  }
+
   // ── Descuento % sin precio anterior: inventado ──
   if (!(Number(spec.product?.compareAtPrice) > 0)) {
     const pct = todoTextos(blocks).match(/(\d+)\s*%\s*(de\s*)?(descuento|off|ahorro|dcto|rebaja)/i);

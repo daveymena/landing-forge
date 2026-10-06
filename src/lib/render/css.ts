@@ -372,8 +372,12 @@ ${
 .field{display:grid;gap:7px}
 .field > label{font-size:13.4px;font-weight:600;color:var(--muted)}
 .input,.select,textarea.input{width:100%;padding:13px 15px;border-radius:var(--r-sm);
-  border:var(--hair);background:var(--bg);color:var(--text);font-family:inherit;font-size:15.5px;
+  border:var(--hair);background:var(--bg);color:var(--text);font-family:inherit;font-size:16px;
   transition:border-color .18s,box-shadow .18s}
+/* Variantes (color/talla): pills tactiles, una seleccion por grupo */
+.vpills{display:flex;flex-wrap:wrap;gap:8px}
+.vpills button{min-height:44px;padding:10px 18px;border-radius:999px;border:var(--hair);background:var(--bg);color:var(--text);font-size:14.5px;font-weight:600;cursor:pointer}
+.vpills button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:transparent}
 .input:focus,.select:focus{outline:none;border-color:var(--accent);
   box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 18%,transparent)}
 .select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
@@ -494,6 +498,15 @@ ${
   .cta-row .btn{width:100%}
   .ctable{font-size:14px}
   .ctable th,.ctable td{padding:12px 11px}
+  /* Movil: titulos fluidos sin desbordar, secciones con aire pero compactas */
+  .h1{font-size:clamp(1.7rem,7.6vw,2.2rem);line-height:1.12}
+  .h2{font-size:clamp(1.45rem,6vw,1.8rem)}
+  .lead{font-size:1rem}
+  .sec{padding-top:42px;padding-bottom:42px}
+  .hero .wrap{padding-top:8px}
+  .hero__bullets{margin-top:20px}
+  .formcard{padding:20px 16px}
+  .summary{font-size:14.5px}
 }
 `.trim();
 }

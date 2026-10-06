@@ -559,6 +559,26 @@ const R: Record<string, Renderer> = {
     const ship = Number(p.shippingPrice) || 0;
     const sp = ctx.spec;
 
+    // Variantes (color/talla/modelo): pills de selección simple por grupo.
+    // Solo si el producto las trae y el bloque no las apagó.
+    const variants = (Array.isArray((sp.product as any).variants) ? (sp.product as any).variants : [])
+      .filter((v: any) => v?.name && Array.isArray(v.options) && v.options.length > 0)
+      .map((v: any) => ({ name: String(v.name).slice(0, 24), options: v.options.map((o: any) => String(o).slice(0, 24)).filter(Boolean).slice(0, 8) }))
+      .filter((v: any) => v.options.length > 0)
+      .slice(0, 3);
+    const showVariants = (p as any).askVariants !== false && variants.length > 0;
+    const comboInicial = variants.map((v: any) => v.options[0]).join(" / ");
+    const varHtml = showVariants
+      ? variants
+          .map(
+            (v: any) => `<div class="field"><label>${esc(v.name)}</label>
+        <div class="vpills" data-lf-variant="${esc(v.name)}" role="group" aria-label="${esc(v.name)}">
+          ${v.options.map((o: any, i: number) => `<button type="button" data-val="${esc(o)}" aria-pressed="${i === 0 ? "true" : "false"}">${esc(o)}</button>`).join("")}
+        </div></div>",
+          )
+          .join("")
+      : "";
+
     const fieldsHtml = `
       <div class="frow">
         <div class="field"><label for="lf-name">Nombre *</label><input class="input" id="lf-name" name="name" required autocomplete="given-name" placeholder="Tu nombre"></div>
@@ -573,6 +593,7 @@ const R: Record<string, Renderer> = {
       </div>
       <div class="field"><label for="lf-dir">Dirección completa *</label><input class="input" id="lf-dir" name="dir" required autocomplete="street-address" placeholder="Calle 10 # 5-20, Apto 301, Barrio…"></div>
       ${p.askNotes ? `<div class="field"><label for="lf-notes">Indicaciones para el mensajero</label><textarea class="input" id="lf-notes" name="notes" placeholder="Punto de referencia, horario preferido…"></textarea></div>` : ""}
+      ${varHtml}
       ${
         p.askQuantity
           ? `<div class="field"><label>Cantidad</label><div class="qty"><button type="button" data-lf-qty="-1" aria-label="Quitar">−</button><input name="quantity" value="1" inputmode="numeric" data-lf-qtyinput><button type="button" data-lf-qty="1" aria-label="Agregar">+</button></div></div>`
@@ -588,6 +609,7 @@ const R: Record<string, Renderer> = {
       p.showSummary && price
         ? `<div class="summary">
         <div class="srow"><span>${esc(sp.product.name || "Producto")} <span data-lf-sumqty>× 1</span></span><span data-lf-sumsub>${money(price, cur)}</span></div>
+        ${showVariants ? `<div class="srow"><span>Variante</span><span data-lf-sumvar>${esc(comboInicial)}</span></div>` : ""}
         <div class="srow"><span>Envío</span><span style="color:var(--ok);font-weight:600"${f(ctx, "shippingLabel")}>${ship ? money(ship, cur) : rich(p.shippingLabel)}</span></div>
         <div class="srow srow--total"><span>Pagas al recibir</span><span data-lf-sumtotal>${money(price + ship, cur)}</span></div>
       </div>`
@@ -599,6 +621,7 @@ const R: Record<string, Renderer> = {
       data-unit-price="${price}" data-shipping="${ship}" data-currency="${esc(cur)}"
       data-success="${esc(sp.settings.integration.successMessage)}"
       data-redirect="${esc(sp.settings.integration.redirectUrl || "")}"
+      data-variation-map='${esc(JSON.stringify((sp.product as any).dropiVariationMap || {})).replace(/'/g, "&#39;")}'
       data-whatsapp="${esc(String(sp.settings.whatsapp || "").replace(/\D/g, ""))}">
       ${fieldsHtml}</form>`;
 

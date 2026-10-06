@@ -42,6 +42,9 @@ REGLAS DE COPY (no negociables):
 7. Respeta los límites de caracteres indicados en el esquema. Un titular largo rompe el diseño.
 8. Precios: usa números enteros en la moneda indicada, sin símbolos ni separadores dentro del JSON (89900, no "$89.900").
 9. En COD el bundle debe tener 3 opciones con descuento creciente y la del medio marcada featured:true.
+10. codForm SIEMPRE con askQuantity:true y showSummary:true (sin eso no se puede pedir mas de uno ni ver el total).
+11. Variantes: si el producto las exige (ropa/talla, color, modelo), define product.variants=[{name:"Color",options:["Negro","Azul"]},...] (maximo 3 grupos x 8 opciones) y deja askVariants:true; si no aplica, variants:[] y el formulario no muestra nada.
+12. El precio se muestra SOLO en: announcement/hero (badge), bundle y formulario. NUNCA dentro de beneficios/faq/resenas/problemas/garantia: repetirlo en cada bloque cansa y abarata.
 10. Los href internos solo pueden ser: #oferta, #pedido, #empezar, #features, #faq, #top.
 
 METODO DE PERSUASION AIDA (como se escribe cada seccion — IMPLICITO SIEMPRE):
@@ -105,7 +108,7 @@ FORMATO DE SALIDA:
   "vertical": "cod" | "digital" | "saas" | "service",
   "locale": "es",
   "meta": { "title": "<=60 chars", "description": "<=155 chars" },
-  "product": { "name": "", "price": 0, "compareAtPrice": 0, "currency": "COP" },
+  "product": { "name": "", "price": 0, "compareAtPrice": 0, "currency": "COP", "variants": [] },
   "theme": { "preset": "<id>", "radius": 18, "density": "normal" },
   "blocks": [ { "type": "...", "variant": "...", "props": { ... } } ]
 }

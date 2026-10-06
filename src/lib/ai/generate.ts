@@ -89,6 +89,7 @@ export function normalizeToSpec(raw: any, prompt: string, fallback: PageSpec): {
       compareAtPrice: num(raw?.product?.compareAtPrice, brief.compareAtPrice),
       currency,
       images: [],
+      variants: variantsDe(raw?.product?.variants),
     },
     settings: fallback.settings,
     theme,
@@ -103,6 +104,18 @@ export function normalizeToSpec(raw: any, prompt: string, fallback: PageSpec): {
 function num(v: any, d: number): number {
   const n = Number(String(v ?? "").toString().replace(/[^\d.-]/g, ""));
   return isFinite(n) && n > 0 ? n : d;
+}
+
+/** Variantes del LLM: solo grupos con nombre y 1-8 opciones cortas. */
+function variantsDe(v: any): Array<{ name: string; options: string[] }> {
+  if (!Array.isArray(v)) return [];
+  return v
+    .map((g: any) => ({
+      name: String(g?.name || "").trim().slice(0, 24),
+      options: (Array.isArray(g?.options) ? g.options : []).map((o: any) => String(o || "").trim().slice(0, 24)).filter(Boolean).slice(0, 8),
+    }))
+    .filter((g) => g.name && g.options.length > 0)
+    .slice(0, 3);
 }
 
 function sanitizeProps(p: any): Record<string, any> {
@@ -187,13 +200,14 @@ function applySource(spec: PageSpec, src: ExtractedProduct): PageSpec {
         .map((c: any) => (c && (c.src || c.image) ? { ...c, src: String(c.src || c.image) } : c))
         .filter((c: any) => c && c.src);
       const bySrc = new Map<string, any>(norm.map((c: any) => [c.src, c]));
-      // Siempre primero TODAS las fotos extraidas de la ficha (con el caption
-      // que el LLM ya le haya puesto si coincide), y al final las extras que
-      // el modelo haya agregado por su cuenta.
-      const fromSource = imgs.map((u) => bySrc.get(u) || { src: u });
-      const extra = norm.filter((c: any) => !imgs.includes(c.src));
+      // La foto del hero (imgs[0]) NO se repite en la galeria: arriba se
+      // presenta el producto, abajo se muestran LAS DEMAS. Si no queda
+      // ninguna, la galeria se vacia y el prune la quita (mejor sin galeria
+      // que con la misma foto dos veces).
+      const resto = imgs.slice(1);
+      const fromSource = resto.map((u) => bySrc.get(u) || { src: u });
+      const extra = norm.filter((c: any) => c.src !== imgs[0] && !imgs.includes(c.src));
       p.items = [...fromSource, ...extra];
-      if (!p.items.length) p.items = imgs.map((src2) => ({ src: src2 }));
     }
     if (b.type === "beforeAfter") {
       if (!p.beforeImage) p.beforeImage = imgs[0];
@@ -243,6 +257,29 @@ function rellenarTitulos(spec: PageSpec): PageSpec {
       return { ...b, props: p };
     }),
   } as PageSpec;
+}
+
+/**
+ * Dedupe final de la galeria contra el hero (corre DESPUES de la pasada
+ * visual, que tambien puede agregar fotos). La foto del hero no se repite
+ * abajo; si la galeria queda vacia, se quita el bloque (el prune igual lo
+ * haria, pero asi no depende de el).
+ */
+export function dedupGallery(spec: PageSpec): PageSpec {
+  const hero = (spec.blocks as any[]).find((b) => b?.type === "hero");
+  const srcHero = hero?.props?.image || (spec.product?.images || [])[0] || "";
+  if (!srcHero) return spec;
+  const blocks = (spec.blocks as any[])
+    .map((b: any) => {
+      if (b?.type !== "gallery") return b;
+      const items = (Array.isArray(b.props?.items) ? b.props.items : []).filter((it: any) => {
+        const u = String(it?.src || it?.image || "");
+        return u && u !== srcHero;
+      });
+      return { ...b, props: { ...(b.props as any), items } };
+    })
+    .filter((b: any) => b?.type !== "gallery" || (Array.isArray(b.props?.items) && b.props.items.length > 0));
+  return { ...spec, blocks } as PageSpec;
 }
 
 /** Tine el tema con la paleta del producto (acento + contraste). No toca layout. */

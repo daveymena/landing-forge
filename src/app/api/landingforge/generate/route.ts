@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { extractFromUrl, type ExtractedProduct } from "@/lib/extract";
 import { saveSite } from "@/lib/db";
-import { generateSpec } from "@/lib/ai/generate";
+import { dedupGallery, generateSpec } from "@/lib/ai/generate";
 import { applyVisualPass } from "@/lib/visual-brain";
 
 /* Compat con el bot: POST /api/landingforge/generate
@@ -112,6 +112,9 @@ export async function POST(req: Request) {
   (spec.settings as any).checkoutUrl = checkout;
   // Pasada visual completa: cerebro en contexto, stock gratis, OpenAI de emergencia, prune.
   await applyVisualPass(spec, aiProvider);
+  // La foto del hero no se repite en la galeria (ni la que puso el LLM ni la
+  // que agrego la pasada visual).
+  Object.assign(spec, dedupGallery(spec));
   await saveSite(spec);
 
   const base = process.env.PUBLIC_APP_URL || new URL(req.url).origin;

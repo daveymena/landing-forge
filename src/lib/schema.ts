@@ -73,6 +73,19 @@ export const ProductSchema = z.object({
   images: z.array(z.string()).default([]),
   dropiProductId: z.union([z.string(), z.number()]).optional(),
   dropiVariationId: z.union([z.string(), z.number()]).optional(),
+  /**
+   * Variantes que el cliente elige (color/talla/modelo). Ej:
+   * [{ name: "Color", options: ["Negro", "Azul"] }, { name: "Talla", options: ["S","M","L"] }].
+   * Si el producto no las exige, []. El formulario las muestra como
+   * selectores y manda la combinación elegida con el pedido.
+   */
+  variants: z.array(z.object({ name: z.string(), options: z.array(z.string()) })).default([]),
+  /**
+   * Mapa combinación -> variation_id de Dropi ("Negro / M" -> "12345").
+   * Se llena al vincular el producto de Dropi; si está vacío, la variante
+   * igual viaja en el pedido (notas + WhatsApp) pero sin variation_id.
+   */
+  dropiVariationMap: z.record(z.string()).default({}),
 });
 export type Product = z.infer<typeof ProductSchema>;
 
