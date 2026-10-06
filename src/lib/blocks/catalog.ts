@@ -351,7 +351,7 @@ export const CATALOG: BlockDef[] = [
       BG_FIELD,
     ],
     defaults: {
-      eyebrow: "El problema",
+      eyebrow: "",
       title: "Si esto te suena familiar, no es culpa tuya",
       body: "",
       items: [],

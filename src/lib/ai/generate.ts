@@ -141,9 +141,11 @@ function applySource(spec: PageSpec, src: ExtractedProduct): PageSpec {
   // Un LLM al que le dices "Colombia" es capaz de poner 129900 junto a un precio de 22 USD.
   if (src.compareAtPrice > src.price) {
     out.product.compareAtPrice = src.compareAtPrice;
-  } else if (src.price) {
-    const c = Number(out.product.compareAtPrice) || 0;
-    if (c <= src.price || c > src.price * 5) out.product.compareAtPrice = 0;
+  } else {
+    // Sin precio anterior REAL no hay tachado: el "antes $X" inventado es
+    // publicidad falsa, rompe la confianza y la coherencia de precios.
+    // La oferta se comunica con "precio de lanzamiento" + urgencia real.
+    out.product.compareAtPrice = 0;
   }
   if (src.currency) out.product.currency = src.currency;
   if (src.sku) out.product.sku = src.sku;
@@ -216,6 +218,30 @@ function applySource(spec: PageSpec, src: ExtractedProduct): PageSpec {
     });
   }
   return out;
+}
+
+/**
+ * Ningún bloque de copy queda con el título vacío.
+ *
+ * El modelo a veces devuelve title:"" (pisando el default del catálogo) y el
+ * bloque sale sin encabezado — como el problem sin título. Esto lo rellena
+ * con el título por defecto del catálogo, que es marco neutro, no copy
+ * inventado. Solo bloques de copy/persuasión; galería y hero se dejan quietos.
+ */
+const CON_TITULO_OBLIGADO = ["problem", "faq", "benefits", "reviewsUgc", "testimonials", "guarantee", "bundle", "codForm", "ctaFinal", "comparison", "beforeAfter", "steps", "valueStack"];
+function rellenarTitulos(spec: PageSpec): PageSpec {
+  return {
+    ...spec,
+    blocks: spec.blocks.map((b: any) => {
+      if (!CON_TITULOS_OBLIGADO.includes(b?.type)) return b;
+      const p: any = { ...(b.props as any) };
+      if (!String(p.title || "").trim()) {
+        const d = (BY_TYPE[b.type] as any)?.defaults?.title;
+        if (d && String(d).trim()) p.title = String(d);
+      }
+      return { ...b, props: p };
+    }),
+  } as PageSpec;
 }
 
 /** Tine el tema con la paleta del producto (acento + contraste). No toca layout. */
@@ -331,6 +357,7 @@ export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Pro
         avisos.push(`Revision experta no corrio (${String(e?.message || e).slice(0, 100)}).`);
       }
     }
+    spec = rellenarTitulos(spec);
     return { spec, engine: "llm", provider: pid, model, ms: Date.now() - t0, warnings: avisos, analisis };
   } catch (e: any) {
     return {
@@ -381,6 +408,7 @@ export async function editSpec(spec: PageSpec, instruction: string, provider?: {
             /* el cambio igual se guarda */
           }
         }
+        final = rellenarTitulos(final);
         return { spec: final, reply: nota, ops, engine: "llm" };
       }
     } catch {
