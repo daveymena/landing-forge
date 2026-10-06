@@ -54,7 +54,7 @@ function esSoloGenerico(t: string): boolean {
  * Chequeo determinista del método AIDA sobre el spec (instantáneo, sin IA).
  * Marca fallos concretos; la reparación experta solo corre si hay fallos.
  */
-export function chequearAIDA(spec: PageSpec, nombreProducto: string): HallazgoAIDA[] {
+export function chequearAIDA(spec: PageSpec, nombreProducto: string, vertical = ""): HallazgoAIDA[] {
   const out: HallazgoAIDA[] = [];
   const blocks = Array.isArray(spec?.blocks) ? spec.blocks : [];
   const nombre = String(nombreProducto || "").toLowerCase().trim();
@@ -96,14 +96,23 @@ export function chequearAIDA(spec: PageSpec, nombreProducto: string): HallazgoAI
     }
   }
 
-  // ── INTERÉS: bloque problem con 3 dolores concretos ──
+  // ── INTERÉS: agitación del dolor (problem, o el contraste en COD) ──
+  // El flujo COD no trae problem: el contraste vive en beforeAfter ("Antes")
+  // o comparison. Exigir problem siempre duplicaba la agitación y quemaba un
+  // pase del experto en cada landing COD.
   const problem = blocks.find((b: any) => b?.type === "problem") as any;
+  const beforeAfter = blocks.find((b: any) => b?.type === "beforeAfter") as any;
+  const comparison = blocks.find((b: any) => b?.type === "comparison") as any;
+  const antes = beforeAfter ? [...(beforeAfter.props?.before || []), ...(beforeAfter.props?.items || [])] : [];
+  const antesBuenos = antes.filter((it: any) => String(it?.text || it?.title || "").trim().length >= 15);
+  const duelo = comparison ? [...(comparison.props?.items || []), ...(comparison.props?.rows || [])] : [];
+  const hayContraste = antesBuenos.length >= 2 || duelo.length >= 2;
   if (problem && !tituloDe(problem.props)) {
     out.push({ bloque: "problem", problema: "el bloque de dolores no tiene titulo que los enmarque (ej: el costo de seguir como estas)" });
   }
-  if (!problem) {
-    out.push({ bloque: "problem", problema: "falta el bloque de dolores: sin agitación no hay interés" });
-  } else {
+  if (!problem && !hayContraste) {
+    out.push({ bloque: "problem", problema: "falta agitación del dolor: problem con 3 dolores, o contraste en beforeAfter/comparison" });
+  } else if (problem) {
     const items = Array.isArray(problem.props?.items) ? problem.props.items : [];
     const buenos = items.filter((it: any) => String(it?.text || it?.description || "").trim().length >= 20 && !esSoloGenerico(String(it?.title || "") + " " + String(it?.text || "")));
     if (buenos.length < 3) {
@@ -170,6 +179,14 @@ export function chequearAIDA(spec: PageSpec, nombreProducto: string): HallazgoAI
   // ── Urgencia visible y honesta ──
   if (!/(stock|oferta|quedan|descuento|env[ií]o gratis|lanzamiento)/i.test(todoTextos(blocks))) {
     out.push({ bloque: "urgencia", problema: "no hay urgencia visible (stock, oferta, envio gratis): el cliente pospone y no vuelve" });
+  }
+
+  // ── Descuento % sin precio anterior: inventado ──
+  if (!(Number(spec.product?.compareAtPrice) > 0)) {
+    const pct = todoTextos(blocks).match(/(\d+)\s*%\s*(de\s*)?(descuento|off|ahorro|dcto|rebaja)/i);
+    if (pct) {
+      out.push({ bloque: "precio", problema: `descuento del ${pct[1]}% inventado (no hay precio anterior real): comunica oferta sin % falso` });
+    }
   }
 
   // ── Coherencia de precios en los textos ──

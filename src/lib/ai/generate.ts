@@ -279,7 +279,7 @@ export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Pro
   if (cfg.id === "none") {
     const fb = rellenarTitulos(themed(fallback));
     const w0 = ["Sin API key de IA configurada: se usó el generador determinista (estructura + copy por plantilla)."];
-    const h0 = chequearAIDA(fb, fb.product?.name || "");
+    const h0 = chequearAIDA(fb, fb.product?.name || "", fb.vertical || "");
     if (h0.length) w0.push(`Chequeo AIDA del plan B: ${h0.length} observaciones (${h0.map((h) => h.bloque).join(", ")}).`);
     return {
       spec: fb,
@@ -358,7 +358,7 @@ export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Pro
 
     // ── Fase 3: REVISION EXPERTA (solo si el chequeo AIDA marca fallos) ──
     // El copy bueno no paga segundo pase; el flojo lo corrige el experto.
-    const hallazgos = chequearAIDA(spec, spec.product?.name || "");
+    const hallazgos = chequearAIDA(spec, spec.product?.name || "", spec.vertical || "");
     if (hallazgos.length) {
       try {
         const rev = await revisionExperta(spec, hallazgos, opts.provider);
@@ -381,7 +381,7 @@ export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Pro
     // el experto igual puede levantar el plan B; si el proveedor esta caido,
     // falla rapido y queda el aviso honesto.
     try {
-      const h = chequearAIDA(fb, fb.product?.name || "");
+      const h = chequearAIDA(fb, fb.product?.name || "", fb.vertical || "");
       if (h.length) {
         const rev = await revisionExperta(fb, h, opts.provider);
         if (rev.aplicadas > 0) {
@@ -431,7 +431,7 @@ export async function editSpec(spec: PageSpec, instruction: string, provider?: {
         let nota = String(raw?.reply || "Listo.");
         // La edicion tambien pasa por el experto: un cambio de copy puede
         // romper el AIDA (ej: titular vuelto al nombre del producto).
-        const hallazgos = chequearAIDA(final, final.product?.name || "");
+        const hallazgos = chequearAIDA(final, final.product?.name || "", final.vertical || "");
         if (hallazgos.length) {
           try {
             const rev = await revisionExperta(final, hallazgos, provider);
