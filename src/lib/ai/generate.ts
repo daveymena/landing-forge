@@ -276,13 +276,17 @@ export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Pro
 
   const cfg = await resolveProvider(opts.provider);
   if (cfg.id === "none") {
+    const fb = rellenarTitulos(themed(fallback));
+    const w0 = ["Sin API key de IA configurada: se usó el generador determinista (estructura + copy por plantilla)."];
+    const h0 = chequearAIDA(fb, fb.product?.name || "");
+    if (h0.length) w0.push(`Chequeo AIDA del plan B: ${h0.length} observaciones (${h0.map((h) => h.bloque).join(", ")}).`);
     return {
-      spec: themed(fallback),
+      spec: fb,
       engine: "deterministic",
       provider: "none",
       model: "",
       ms: Date.now() - t0,
-      warnings: ["Sin API key de IA configurada: se usó el generador determinista (estructura + copy por plantilla)."],
+      warnings: w0,
     };
   }
 
@@ -319,25 +323,35 @@ export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Pro
     ? `vertical=${opts.baseSpec.vertical} · tema=${opts.baseSpec.theme.preset}\n` +
       opts.baseSpec.blocks.map((b, i) => `${i}. type=${b.type} variant=${b.variant} props=${JSON.stringify(b.props).slice(0, 300)}`).join("\n").slice(0, 12000)
     : undefined;
+  const pedido = {
+    system: architectSystem(),
+    user: architectUser(effectivePrompt, {
+      vertical: tpl?.vertical || brief.vertical,
+      preset: tpl?.preset || suggestPreset(prompt, brief.vertical),
+      source: opts.source,
+      palette: palette || undefined,
+      pro: opts.pro,
+      baseSummary,
+      analisis: analisis || undefined,
+    }),
+    json: true as const,
+    maxTokens: 6000,
+    temperature: 0.8,
+    provider: opts.provider,
+  };
   try {
-    const res = await complete({
-      system: architectSystem(),
-      user: architectUser(effectivePrompt, {
-        vertical: tpl?.vertical || brief.vertical,
-        preset: tpl?.preset || suggestPreset(prompt, brief.vertical),
-        source: opts.source,
-        palette: palette || undefined,
-        pro: opts.pro,
-        baseSummary,
-        analisis: analisis || undefined,
-      }),
-      json: true,
-      maxTokens: 6000,
-      temperature: 0.8,
-      provider: opts.provider,
-    });
-    const raw = extractJson(res.text);
-    const norm = normalizeToSpec(raw, prompt, fallback);
+    let norm: ReturnType<typeof normalizeToSpec>;
+    try {
+      const res = await complete(pedido);
+      norm = normalizeToSpec(extractJson(res.text), prompt, fallback);
+      if (norm.spec.blocks.length < 4 || norm.warnings.some((w) => /pocos bloques/i.test(w))) throw new Error("pocos bloques");
+    } catch {
+      // Reintento UNICO ante respuesta trunca: lo transitorio (corte a mitad
+      // del JSON) no debe degradar a plantilla sin pelearla una vez.
+      avisos.push("La primera respuesta de la IA vino incompleta; reintentando una vez.");
+      const res2 = await complete(pedido);
+      norm = normalizeToSpec(extractJson(res2.text), prompt, fallback);
+    }
     let spec = themed(opts.source ? applySource(norm.spec, opts.source) : norm.spec);
     avisos.push(...norm.warnings);
 
@@ -360,13 +374,33 @@ export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Pro
     spec = rellenarTitulos(spec);
     return { spec, engine: "llm", provider: pid, model, ms: Date.now() - t0, warnings: avisos, analisis };
   } catch (e: any) {
+    avisos.push(`La IA falló (${String(e.message || e).slice(0, 180)}); se usó el generador determinista.`);
+    let fb = rellenarTitulos(themed(fallback));
+    // Rescate con llamada chica: si el fallo fue la respuesta grande (trunca),
+    // el experto igual puede levantar el plan B; si el proveedor esta caido,
+    // falla rapido y queda el aviso honesto.
+    try {
+      const h = chequearAIDA(fb, fb.product?.name || "");
+      if (h.length) {
+        const rev = await revisionExperta(fb, h, opts.provider);
+        if (rev.aplicadas > 0) {
+          fb = rellenarTitulos(rev.spec);
+          avisos.push(`Rescate del plan B: ${rev.aplicadas} ajustes AIDA.`);
+        } else {
+          avisos.push(`Chequeo AIDA del plan B: ${h.length} observaciones (${h.map((x) => x.bloque).join(", ")}).`);
+        }
+      }
+    } catch {
+      /* queda el plan B tal cual, avisado */
+    }
     return {
-      spec: themed(fallback),
+      spec: fb,
       engine: "deterministic",
       provider: pid,
       model,
       ms: Date.now() - t0,
-      warnings: [`La IA falló (${String(e.message || e).slice(0, 180)}); se usó el generador determinista.`],
+      warnings: avisos,
+      analisis,
     };
   }
 }
