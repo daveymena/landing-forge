@@ -71,6 +71,19 @@ export function chequearAIDA(spec: PageSpec, nombreProducto: string): HallazgoAI
     const h1n = h1.toLowerCase().replace(/[^\p{L}\d\s]/gu, "").trim();
     if (nombre && (h1n === nombre || h1n.replace(/^(compra|conoce|descubre|prueba)\s+/u, "") === nombre)) {
       out.push({ bloque: "hero", problema: `el H1 es solo el nombre del producto ("${h1.slice(0, 60)}"): no tiene gancho de dolor ni deseo` });
+    } else if (nombre && nombre.split(/\s+/).length >= 2) {
+      // "Mochila Transportadora Mascotas X: una mascota feliz" = el nombre
+      // disfrazado con cola generica. Si empieza por el producto o contiene
+      // 3+ palabras seguidas del nombre, no es un gancho.
+      const pal = nombre.split(/\s+/).filter((w) => w.length > 2);
+      const empieza = pal.length > 0 && h1n.startsWith(pal.slice(0, 2).join(" "));
+      let seguidas = 0;
+      for (let i = 0; i + 2 < pal.length; i++) {
+        if (h1n.includes(pal.slice(i, i + 3).join(" "))) { seguidas = 3; break; }
+      }
+      if (empieza || seguidas >= 3) {
+        out.push({ bloque: "hero", problema: `el H1 es el nombre del producto con cola ("${h1.slice(0, 70)}"): el gancho debe salir de la promesa, no del nombre` });
+      }
     }
   }
 
@@ -85,6 +98,9 @@ export function chequearAIDA(spec: PageSpec, nombreProducto: string): HallazgoAI
 
   // ── INTERÉS: bloque problem con 3 dolores concretos ──
   const problem = blocks.find((b: any) => b?.type === "problem") as any;
+  if (problem && !tituloDe(problem.props)) {
+    out.push({ bloque: "problem", problema: "el bloque de dolores no tiene titulo que los enmarque (ej: el costo de seguir como estas)" });
+  }
   if (!problem) {
     out.push({ bloque: "problem", problema: "falta el bloque de dolores: sin agitación no hay interés" });
   } else {
@@ -130,7 +146,7 @@ export function chequearAIDA(spec: PageSpec, nombreProducto: string): HallazgoAI
   if (social) {
     const items = Array.isArray(social.props?.items) ? social.props.items : [];
     const creibles = items.filter(
-      (it: any) => String(it?.quote || it?.text || "").trim().length >= 30 && String(it?.name || it?.nombre || "").trim().length > 1,
+      (it: any) => String(it?.quote || it?.text || "").trim().length >= 45 && String(it?.name || it?.nombre || "").trim().length > 1,
     );
     if (items.length > 0 && creibles.length < Math.min(3, items.length)) {
       out.push({ bloque: "reviews", problema: "resenas sin detalle concreto: nombre + ciudad + medida real (dias de entrega, resultado)" });

@@ -37,7 +37,7 @@ REGLAS DE COPY (no negociables):
 2. Nada de lorem ipsum, nada de "[tu texto aquí]", nada de corchetes. Todo listo para publicar.
 3. Español natural del país objetivo. Si el prompt menciona Colombia/México/etc., usa su forma de hablar y su moneda.
 4. Beneficios > características. Cada ítem dice qué gana la persona, no qué tiene el producto.
-5. Prueba social con nombre, ciudad y, si se puede, un número concreto.
+5. Prueba social con nombre + CIUDAD + detalle concreto en la cita (dias de entrega, "pague al recibir", medida del beneficio). Cita minima 45 caracteres: sin detalle no se cree.
 6. El FAQ responde objeciones REALES del vertical (en COD: "¿de verdad pago al recibir?", "¿cuánto demora?", "¿y si no me gusta?").
 7. Respeta los límites de caracteres indicados en el esquema. Un titular largo rompe el diseño.
 8. Precios: usa números enteros en la moneda indicada, sin símbolos ni separadores dentro del JSON (89900, no "$89.900").
@@ -174,7 +174,9 @@ ANALISIS ESTRATEGICO PREVIO (verdad para el angulo y el copy: usalo, no lo contr
 ${prompt}
 """
 ${hints?.vertical ? `\nVertical sugerido: ${hints.vertical}` : ""}${hints?.preset ? `\nTema sugerido: ${hints.preset}` : ""}
-${facts}${analisisTxt}
+${facts}${analisisTxt}${an ? `
+REGLA DURA DEL H1: el titular del hero es la PROMESA de arriba reescrita como gancho de 6-12 palabras ("${an.promesa.slice(0, 90)}"). PROHIBIDO empezar por el nombre del producto o copiarlo tal cual.
+` : ""}
 1. Elige la plantilla cuyo vertical y keywords encajen mejor con el brief.
 2. Usa su theme.preset salvo que el brief pida otro estilo explícito.
 - REGLA DURA: si NO hay videos reales listados arriba, JAMAS uses la variante vsl ni bloques video: usa split/product/centered con las fotos.
