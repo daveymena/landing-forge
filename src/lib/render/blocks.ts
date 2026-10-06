@@ -574,7 +574,7 @@ const R: Record<string, Renderer> = {
             (v: any) => `<div class="field"><label>${esc(v.name)}</label>
         <div class="vpills" data-lf-variant="${esc(v.name)}" role="group" aria-label="${esc(v.name)}">
           ${v.options.map((o: any, i: number) => `<button type="button" data-val="${esc(o)}" aria-pressed="${i === 0 ? "true" : "false"}">${esc(o)}</button>`).join("")}
-        </div></div>",
+        </div></div>`,
           )
           .join("")
       : "";
