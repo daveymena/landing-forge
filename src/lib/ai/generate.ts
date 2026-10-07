@@ -1,4 +1,5 @@
 ﻿import { PageSpecSchema, uid, slugify, applyOps, EditOpSchema, type EditOp, type PageSpec } from "../schema";
+import { ajustarAHechos, bloqueDeHechos, type HechosNegocio } from "./hechos";
 import { localEdit, type EditResult } from "./localEdit";
 import { BY_TYPE, withDefaults } from "../blocks/catalog";
 import { themeFromPreset, PRESET_BY_ID, suggestPreset } from "../theme";
@@ -142,6 +143,8 @@ export interface GenerateOpts {
   provider?: { providerId?: string; model?: string };
   /** Origen del trafico ("facebook" por defecto en fisico): ajusta angulo y diseno. */
   trafico?: string;
+  /** Hechos del negocio (marca, envio, garantia, trato): lo unico prometible. */
+  hechos?: HechosNegocio;
 }
 
 /** Fija en el spec los datos que vienen de una ficha real: el LLM escribe el
@@ -243,6 +246,18 @@ function applySource(spec: PageSpec, src: ExtractedProduct): PageSpec {
  * inventado. Solo bloques de copy/persuasión; galería y hero se dejan quietos.
  */
 const CON_TITULO_OBLIGADO = ["problem", "faq", "benefits", "reviewsUgc", "testimonials", "guarantee", "bundle", "codForm", "ctaFinal", "comparison", "beforeAfter", "steps", "valueStack"];
+/** Retira lo que la landing promete sin respaldo (ver ai/hechos.ts). */
+function conHechos(spec: PageSpec, prompt: string, opts: GenerateOpts, avisos?: string[]): PageSpec {
+  const src: any = opts.source || {};
+  const r = ajustarAHechos(spec, {
+    texto: [prompt, src.description, ...(Array.isArray(src.bullets) ? src.bullets : [])].filter(Boolean).join(" | "),
+    hechos: opts.hechos,
+    producto: String(spec.product?.name || src.name || ""),
+  });
+  if (r.cambios.length && avisos) avisos.push(`Coherencia con el negocio: ${r.cambios.join("; ")}.`);
+  return r.spec;
+}
+
 /** Ultimo paso de toda generacion COD: el precio de cada bloque es el del
  *  producto. applySource solo corre con URL; sin ella (o tras la revision
  *  experta) quedaban bloques con otra cifra: caso real site_l43ah0t, hero y
@@ -334,7 +349,7 @@ export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Pro
 
   const cfg = await resolveProvider(opts.provider);
   if (cfg.id === "none") {
-    const fb = rellenarTitulos(themed(fallback));
+    const fb = rellenarTitulos(conHechos(themed(fallback), prompt, opts));
     const w0 = ["Sin API key de IA configurada: se usó el generador determinista (estructura + copy por plantilla)."];
     const h0 = chequearAIDA(fb, fb.product?.name || "", fb.vertical || "");
     if (h0.length) w0.push(`Chequeo AIDA del plan B: ${h0.length} observaciones (${h0.map((h) => h.bloque).join(", ")}).`);
@@ -376,7 +391,7 @@ export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Pro
   } catch (e: any) {
     avisos.push(`Analisis previo no corrio (${String(e?.message || e).slice(0, 100)}).`);
   }
-  const effectivePrompt = tpl ? `[Plantilla elegida: ${tpl.name} — ${tpl.hint}. Tono: ${tpl.tone}] ${prompt}` : prompt;
+  const effectivePrompt = (tpl ? `[Plantilla elegida: ${tpl.name} — ${tpl.hint}. Tono: ${tpl.tone}] ${prompt}` : prompt) + bloqueDeHechos(opts.hechos);
   const baseSummary = opts.baseSpec
     ? `vertical=${opts.baseSpec.vertical} · tema=${opts.baseSpec.theme.preset}\n` +
       opts.baseSpec.blocks.map((b, i) => `${i}. type=${b.type} variant=${b.variant} props=${JSON.stringify(b.props).slice(0, 300)}`).join("\n").slice(0, 12000)
@@ -429,11 +444,11 @@ export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Pro
         avisos.push(`Revision experta no corrio (${String(e?.message || e).slice(0, 100)}).`);
       }
     }
-    spec = alinearPrecios(rellenarTitulos(spec));
+    spec = alinearPrecios(rellenarTitulos(conHechos(spec, prompt, opts, avisos)));
     return { spec, engine: "llm", provider: pid, model, ms: Date.now() - t0, warnings: avisos, analisis };
   } catch (e: any) {
     avisos.push(`La IA falló (${String(e.message || e).slice(0, 180)}); se usó el generador determinista.`);
-    let fb = rellenarTitulos(themed(fallback));
+    let fb = rellenarTitulos(conHechos(themed(fallback), prompt, opts, avisos));
     // Rescate con llamada chica: si el fallo fue la respuesta grande (trunca),
     // el experto igual puede levantar el plan B; si el proveedor esta caido,
     // falla rapido y queda el aviso honesto.
@@ -442,7 +457,7 @@ export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Pro
       if (h.length) {
         const rev = await revisionExperta(fb, h, opts.provider);
         if (rev.aplicadas > 0) {
-          fb = rellenarTitulos(rev.spec);
+          fb = rellenarTitulos(conHechos(rev.spec, prompt, opts, avisos));
           avisos.push(`Rescate del plan B: ${rev.aplicadas} ajustes AIDA.`);
         } else {
           avisos.push(`Chequeo AIDA del plan B: ${h.length} observaciones (${h.map((x) => x.bloque).join(", ")}).`);

@@ -3,6 +3,7 @@ import { extractFromUrl, type ExtractedProduct } from "@/lib/extract";
 import { saveSite } from "@/lib/db";
 import { dedupGallery, generateSpec } from "@/lib/ai/generate";
 import { applyVisualPass } from "@/lib/visual-brain";
+import { leerHechos } from "@/lib/ai/hechos";
 
 /* Compat con el bot: POST /api/landingforge/generate
    Recibe { productUrl?, productName?, productKind?, price?, currency?,
@@ -25,6 +26,9 @@ export async function POST(req: Request) {
   const name = String(body.productName || body.title || "").trim();
   const kind = body.productKind === "digital" ? "digital" : "physical";
   const whatsapp = String(body.whatsapp || process.env.WHATSAPP_NUMBER || "573136174267").trim();
+  // Hechos del negocio que manda VentasPro (marca, envio, garantia, trato):
+  // lo unico que la landing puede prometer. Ver lib/ai/hechos.ts.
+  const hechos = leerHechos(body.hechos);
 
   let source: ExtractedProduct | undefined = undefined;
   const warnings: string[] = [];
@@ -92,7 +96,9 @@ export async function POST(req: Request) {
   const auto = [
     `Landing para vender ${productName}`,
     price ? `a ${price} ${currency}` : "",
-    kind === "digital" ? "producto digital" : "con pago contra entrega en Colombia",
+    kind === "digital"
+      ? "producto digital"
+      : `con ${hechos?.pago || "pago contra entrega"}${hechos?.cobertura ? ` (${hechos.cobertura})` : " en Colombia"}`,
     source?.description ? `. ${String(source.description).slice(0, 400)}` : "",
     checkout ? `. El boton de compra lleva a ${checkout}` : "",
     whatsapp ? `. WhatsApp de contacto ${whatsapp}` : "",
@@ -105,7 +111,7 @@ export async function POST(req: Request) {
 
   const aiProvider = body.aiProvider && typeof body.aiProvider === "object" ? body.aiProvider : undefined;
   const trafico = String(body.trafico || (kind === "digital" ? "organico" : "facebook"));
-  const res = await generateSpec(prompt, { source, templateId, pro: body.pro === true, provider: aiProvider, trafico });
+  const res = await generateSpec(prompt, { source, templateId, pro: body.pro === true, provider: aiProvider, trafico, hechos });
   const spec = res.spec;
 
   spec.settings.whatsapp = whatsapp || spec.settings.whatsapp || "";
