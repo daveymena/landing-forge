@@ -77,7 +77,9 @@ export default function DropiConnect() {
               <input
                 className="inp"
                 type="password"
-                placeholder={s.hasToken ? s.token : "Pega aquí tu token de Dropi"}
+                autoComplete="new-password"
+                spellCheck={false}
+                placeholder={s.hasToken ? `Guardado ${s.token} · pega uno nuevo para cambiarlo` : "Pega aquí tu token de Dropi"}
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
               />

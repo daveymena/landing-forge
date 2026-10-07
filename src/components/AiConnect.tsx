@@ -26,6 +26,7 @@ export default function AiConnect({ onChanged }: { onChanged?: () => void }) {
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [hasKey, setHasKey] = useState(false);
+  const [keyHint, setKeyHint] = useState("");
   const [fallbacks, setFallbacks] = useState("");
 
   const [live, setLive] = useState<{ id: string; label: string; free?: boolean }[] | null>(null);
@@ -47,8 +48,11 @@ export default function AiConnect({ onChanged }: { onChanged?: () => void }) {
     setPid(chosen || "custom");
     setModel(s.model || m?.defaultModel || "");
     setBaseUrl(s.baseUrl || m?.defaultBaseUrl || "");
-    setApiKey(s.apiKey || "");
+    // El campo arranca SIEMPRE vacio: la clave guardada nunca vuelve al
+    // navegador completa; solo se indica que existe (y sus ultimos 4).
+    setApiKey("");
     setHasKey(!!s.hasApiKey);
+    setKeyHint(String(s.apiKey || ""));
     setFallbacks((s.fallbacks || []).join(", "));
   }, []);
 
@@ -115,7 +119,8 @@ export default function AiConnect({ onChanged }: { onChanged?: () => void }) {
       });
       const d = await r.json();
       setHasKey(!!d.settings?.ai?.hasApiKey);
-      setApiKey(d.settings?.ai?.apiKey || "");
+      setApiKey("");
+      setKeyHint(String(d.settings?.ai?.apiKey || ""));
       setMsg({ ok: true, text: "Guardado. Las próximas generaciones usarán este modelo." });
       await load();
       onChanged?.();
@@ -224,11 +229,27 @@ export default function AiConnect({ onChanged }: { onChanged?: () => void }) {
               <input
                 className="inp"
                 type="password"
+                autoComplete="new-password"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder={hasKey ? "•••••• guardada" : meta?.needsKey ? "pega tu key" : "no hace falta"}
+                placeholder={hasKey ? `Guardada ${keyHint} · escribe una nueva para cambiarla` : meta?.needsKey ? "pega tu key" : "no hace falta"}
                 spellCheck={false}
               />
+              {hasKey && (
+                <button
+                  type="button"
+                  className="btn sm ghost danger"
+                  style={{ marginTop: 6 }}
+                  onClick={async () => {
+                    if (!confirm("¿Quitar la clave guardada de este proveedor?")) return;
+                    await fetch("/api/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ai: { clearApiKey: true } }) });
+                    setHasKey(false);
+                    setKeyHint("");
+                  }}
+                >
+                  Quitar clave guardada
+                </button>
+              )}
               {meta?.keyUrl && (
                 <div className="hint">
                   Consíguela en{" "}

@@ -173,7 +173,7 @@ export async function saveSettings(patch: Partial<AppSettings>): Promise<AppSett
 }
 
 /** Nunca devolvemos el token completo al cliente */
-const mask = (t: string) => (t ? `${t.slice(0, 4)}••••${t.slice(-4)}` : "");
+const mask = (t: string) => (t ? `••••••••${t.length > 12 ? t.slice(-4) : ""}` : "");
 
 /** Nunca devolvemos tokens completos al cliente */
 export function redactSettings(s: AppSettings) {

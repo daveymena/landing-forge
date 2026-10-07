@@ -120,6 +120,13 @@ export default function Home() {
           <button className="btn sm" onClick={() => setShowSettings((v) => !v)} aria-pressed={showSettings}>
             ⚙<span className="hide-m"> Configuración</span>
           </button>
+          <button
+            className="btn sm ghost"
+            title="Cerrar sesión"
+            onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.href = "/entrar"; }}
+          >
+            Salir
+          </button>
         </div>
       </div>
 
