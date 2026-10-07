@@ -85,9 +85,53 @@ function stars(n: number): string {
   return `<span class="stars" aria-label="${k} de 5">${"★".repeat(k)}${"☆".repeat(5 - k)}</span>`;
 }
 
+/* Modo del render en curso: el recuadro "Imagen" es una guia del editor;
+   publicado, un hueco gris con la palabra "Imagen" es peor que nada. */
+let MODO: Ctx["mode"] = "export";
+
 function img(src: string, alt = "", cls = "", eager = false): string {
-  if (!src) return `<div class="ph">Imagen</div>`;
+  if (!src) return MODO === "edit" ? `<div class="ph">Imagen</div>` : "";
   return `<img src="${esc(src)}" alt="${esc(alt)}" loading="${eager ? "eager" : "lazy"}" decoding="async"${eager ? ` fetchpriority="high"` : ""}${cls ? ` class="${cls}"` : ""}>`;
+}
+
+/* Iconos de linea uniformes. Los emojis que elige el LLM (biberon, hilo,
+   mochila, caramelo para "funda lavable") se ven de plantilla barata: el
+   icono se decide por el TEXTO del item y todos comparten trazo y color. */
+const SVG: Record<string, string> = {
+  truck: '<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>',
+  cash: '<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 9.5v5M17.5 9.5v5"/>',
+  shield: '<path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>',
+  back: '<path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/>',
+  clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  chat: '<path d="M20 11.5a8 8 0 0 1-11.8 7L4 20l1.4-4A8 8 0 1 1 20 11.5z"/>',
+  leaf: '<path d="M5 19c0-8 5-13 14-14 0 9-5 14-13 14"/><path d="M5 19l7-7"/>',
+  heart: '<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/>',
+  star: '<path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.9 6.8 19.6l1-5.8-4.3-4.1 5.9-.8z"/>',
+  drop: '<path d="M12 3.5s6 6.4 6 10.5a6 6 0 0 1-12 0c0-4.1 6-10.5 6-10.5z"/>',
+  bolt: '<path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/>',
+  feather: '<path d="M20 4c-7 0-12 5-12 12v4h4c7 0 8-9 8-16z"/><path d="M8 20L16 10"/>',
+  check: '<circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.2l2.4 2.4 4.6-4.8"/>',
+};
+const ICON_RULES: Array<[RegExp, string]> = [
+  [/env[ií]o|entrega a domicilio|domicilio|despacho|llega|transportadora/i, "truck"],
+  [/contra ?entrega|pag(a|o|as) (al|cuando) (recibir|llegue)|al recibir|efectivo|pago/i, "cash"],
+  [/garant[ií]a|original|segur[oa]|certificad|protecci|confianza/i, "shield"],
+  [/devoluci|reembols/i, "back"],
+  [/r[aá]pid|minutos|horas|tiempo|24 ?h|48 ?h/i, "clock"],
+  [/whatsapp|asesor|soporte|atenci[oó]n|chat/i, "chat"],
+  [/natural|hipoalerg|org[aá]nic|piel|suave/i, "leaf"],
+  [/lav|agua|impermeab|limpi|higien|fresc|transpir|respir/i, "drop"],
+  [/ligera|liviana|ligero|port[aá]til|c[oó]mod|ergon/i, "feather"],
+  [/potencia|energ[ií]a|bater[ií]a|carga|r[eé]sultad/i, "bolt"],
+  [/calidad|premium|valorad|rese[ñn]a|estrella/i, "star"],
+  [/salud|bienestar|cuida|amor|beb[eé]|familia/i, "heart"],
+];
+function lineIcon(titulo: unknown, texto?: unknown): string {
+  // El titulo manda; la descripcion solo desempata cuando el titulo no dice
+  // nada ("Ligera y portatil" no es devolucion por decir "cambios de entorno").
+  const pick = (t: unknown) => ICON_RULES.find(([re]) => re.test(String(t ?? "")))?.[1];
+  const k = pick(titulo) ?? pick(texto) ?? "check";
+  return `<svg class="lico" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${SVG[k]}</svg>`;
 }
 
 function initials(name: string): string {
@@ -253,14 +297,17 @@ const R: Record<string, Renderer> = {
     const items = list(p, "items");
     const cards = items
       .map(
-        (x: any, i: number) => `<div class="${b.variant === "cards" ? "card" : ""} ta-c reveal">
-      <div style="font-size:26px;margin-bottom:8px">${esc(x.icon || "✔")}</div>
+        (x: any, i: number) => `<div class="${b.variant === "cards" ? "card" : ""} trust__i ta-c reveal">
+      <div class="trust__ico">${lineIcon(x.title, x.text)}</div>
       <div style="font-weight:650;font-size:15.4px"${f(ctx, `items.${i}.title`)}>${rich(x.title)}</div>
       ${x.text ? `<div class="small muted" style="margin-top:3px"${f(ctx, `items.${i}.text`)}>${rich(x.text)}</div>` : ""}
     </div>`,
       )
       .join("");
-    return `<section ${secAttrs(ctx, b, "sec--tight")}><div class="wrap"><div class="grid g4">${cards}</div></div></section>`;
+    // 3 sellos en 2 columnas dejaban uno huerfano en el movil: la grilla
+    // sigue la cantidad real.
+    const n = Math.min(items.length, 4);
+    return `<section ${secAttrs(ctx, b, "sec--tight")}><div class="wrap"><div class="grid trust trust--${n}">${cards}</div></div></section>`;
   },
 
   /* ---------------- persuasión ---------------- */
@@ -301,18 +348,18 @@ const R: Record<string, Renderer> = {
         <div style="display:grid;gap:clamp(40px,6vw,88px)">${items
           .map(
             (x: any, i: number) => `<div class="split reveal"${i % 2 ? ' style="direction:rtl"' : ""}>
-            <div style="direction:ltr"><div class="card__ico">${esc(x.icon || "✦")}</div>
+            <div style="direction:ltr"><div class="card__ico">${lineIcon(x.title, x.text)}</div>
               <h3 class="h2" style="font-size:clamp(1.5rem,2.6vw,2.1rem)"${f(ctx, `items.${i}.title`)}>${rich(x.title)}</h3>
               <p class="lead" style="margin-top:12px"${f(ctx, `items.${i}.text`)}>${rich(x.text)}</p></div>
-            <div style="direction:ltr">${img(x.image, x.title)}</div></div>`,
+            ${x.image ? `<div style="direction:ltr">${img(x.image, x.title)}</div>` : ""}</div>`,
           )
           .join("")}</div></div></section>`;
     }
     const cols = items.length === 4 ? "g4" : items.length >= 5 ? "g3" : "g3";
     return `<section ${secAttrs(ctx, b)}><div class="wrap">${head(ctx, p, center)}
-      <div class="grid ${cols}">${items
+      <div class="grid ${cols} bens">${items
         .map(
-          (x: any, i: number) => `<div class="card reveal"><div class="card__ico">${esc(x.icon || "✦")}</div>
+          (x: any, i: number) => `<div class="card reveal"><div class="card__ico">${lineIcon(x.title, x.text)}</div>
         <h3 class="h3"${f(ctx, `items.${i}.title`)}>${rich(x.title)}</h3><p${f(ctx, `items.${i}.text`)}>${rich(x.text)}</p></div>`,
         )
         .join("")}</div></div></section>`;
@@ -709,6 +756,7 @@ export function renderBlock(ctx: Ctx, b: Block): string {
       : "";
   }
   const p = withDefaults(b.type, b.props);
+  MODO = ctx.mode;
   try {
     return fn(ctx, b, p);
   } catch (e) {

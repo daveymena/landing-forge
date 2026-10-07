@@ -473,6 +473,15 @@ ${
 }
 
 /* ---------- responsive ---------- */
+/* iconos de linea + sellos de confianza (pulido 06-10) */
+.lico{display:block;color:var(--accent)}
+.card__ico .lico{width:22px;height:22px}
+.trust{display:grid;gap:18px}
+.trust--1{grid-template-columns:1fr}.trust--2{grid-template-columns:repeat(2,1fr)}
+.trust--3{grid-template-columns:repeat(3,1fr)}.trust--4{grid-template-columns:repeat(4,1fr)}
+.trust__ico{width:48px;height:48px;margin:0 auto 10px;border-radius:50%;display:grid;place-items:center;
+  background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.trust__ico .lico{width:24px;height:24px}
 @media (max-width:1024px){
   .bento{grid-template-columns:repeat(2,1fr)}
   .bento .span3{grid-column:span 2}
@@ -507,6 +516,17 @@ ${
   .hero__bullets{margin-top:20px}
   .formcard{padding:20px 16px}
   .summary{font-size:14.5px}
+  /* beneficios: icono al costado, no seis tarjetas altas que alargan la pagina */
+  .bens{gap:12px}
+  .bens > .card{display:grid;grid-template-columns:44px 1fr;column-gap:14px;align-items:start;padding:16px 16px}
+  .bens > .card .card__ico{grid-row:span 2;margin:0}
+  .bens > .card .h3{font-size:16.5px;margin:0 0 4px}
+  .bens > .card p{font-size:14.5px;margin:0}
+  .trust{gap:10px}
+  .trust--4{grid-template-columns:repeat(2,1fr)}
+  .trust--3 .trust__i > div:first-of-type + div{font-size:13.5px}
+  .trust--3 .small{font-size:12px}
+  .trust__ico{width:42px;height:42px;margin-bottom:8px}
 }
 `.trim();
 }

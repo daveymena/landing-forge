@@ -3,6 +3,7 @@ import { buildCss, fontLink } from "./css";
 import { renderBlock, esc, type Ctx } from "./blocks";
 import { runtimeScript, pixelsScript } from "./runtime";
 import { EDITOR_RUNTIME } from "./editorRuntime";
+import { pulirParaVender } from "./pulir";
 
 export interface RenderOptions {
   mode?: "edit" | "export";
@@ -14,9 +15,12 @@ export interface RenderOptions {
 
 export function renderPage(spec: PageSpec, opts: RenderOptions = {}): string {
   const mode = opts.mode ?? "export";
+  // El pulido corre en editor y en /l/:slug: lo que se ve al editar es lo
+  // que sale publicado, y las landings viejas se arreglan sin regenerarse.
+  const pulido = pulirParaVender(spec);
   const spec2: PageSpec = opts.endpoint
-    ? { ...spec, settings: { ...spec.settings, endpoint: opts.endpoint } }
-    : spec;
+    ? { ...pulido, settings: { ...pulido.settings, endpoint: opts.endpoint } }
+    : pulido;
 
   const body = spec2.blocks
     .map((b, i) => renderBlock({ spec: spec2, mode, index: i } as Ctx, b))
