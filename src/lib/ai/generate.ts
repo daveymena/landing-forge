@@ -243,6 +243,26 @@ function applySource(spec: PageSpec, src: ExtractedProduct): PageSpec {
  * inventado. Solo bloques de copy/persuasión; galería y hero se dejan quietos.
  */
 const CON_TITULO_OBLIGADO = ["problem", "faq", "benefits", "reviewsUgc", "testimonials", "guarantee", "bundle", "codForm", "ctaFinal", "comparison", "beforeAfter", "steps", "valueStack"];
+/** Ultimo paso de toda generacion COD: el precio de cada bloque es el del
+ *  producto. applySource solo corre con URL; sin ella (o tras la revision
+ *  experta) quedaban bloques con otra cifra: caso real site_l43ah0t, hero y
+ *  CTA fijo en $2.000 con "$89.900" tachado y -98% sobre un producto de 89900.
+ *  El tachado solo sobrevive si es el precio anterior REAL del producto. */
+function alinearPrecios(spec: PageSpec): PageSpec {
+  const price = Number(spec.product?.price) || 0;
+  if (spec.vertical !== "cod" || price <= 0) return spec;
+  const compare = Number(spec.product?.compareAtPrice) > price ? Number(spec.product.compareAtPrice) : 0;
+  return {
+    ...spec,
+    blocks: spec.blocks.map((b) => {
+      const p: any = b.props;
+      if (!p || typeof p.price !== "number" || p.price <= 0) return b;
+      if (p.price === price && (p.compareAtPrice ?? 0) === compare) return b;
+      return { ...b, props: { ...p, price, ...(typeof p.compareAtPrice === "number" ? { compareAtPrice: compare } : {}) } };
+    }),
+  };
+}
+
 function rellenarTitulos(spec: PageSpec): PageSpec {
   return {
     ...spec,
@@ -319,7 +339,7 @@ export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Pro
     const h0 = chequearAIDA(fb, fb.product?.name || "", fb.vertical || "");
     if (h0.length) w0.push(`Chequeo AIDA del plan B: ${h0.length} observaciones (${h0.map((h) => h.bloque).join(", ")}).`);
     return {
-      spec: fb,
+      spec: alinearPrecios(fb),
       engine: "deterministic",
       provider: "none",
       model: "",
@@ -409,7 +429,7 @@ export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Pro
         avisos.push(`Revision experta no corrio (${String(e?.message || e).slice(0, 100)}).`);
       }
     }
-    spec = rellenarTitulos(spec);
+    spec = alinearPrecios(rellenarTitulos(spec));
     return { spec, engine: "llm", provider: pid, model, ms: Date.now() - t0, warnings: avisos, analisis };
   } catch (e: any) {
     avisos.push(`La IA falló (${String(e.message || e).slice(0, 180)}); se usó el generador determinista.`);
@@ -432,7 +452,7 @@ export async function generateSpec(prompt: string, opts: GenerateOpts = {}): Pro
       /* queda el plan B tal cual, avisado */
     }
     return {
-      spec: fb,
+      spec: alinearPrecios(fb),
       engine: "deterministic",
       provider: pid,
       model,

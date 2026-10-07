@@ -10,6 +10,8 @@ export async function GET() {
     sites: sites.map((s) => ({
       id: s.id, name: s.name, slug: s.slug, vertical: s.vertical,
       preset: s.theme.preset, blocks: s.blocks.length, updatedAt: s.updatedAt,
+      // Miniatura del panel: la primera foto con URL (las data: pesan MBs).
+      thumb: (s.product?.images ?? []).find((u) => /^https?:\/\//.test(u)) ?? "",
     })),
   });
 }

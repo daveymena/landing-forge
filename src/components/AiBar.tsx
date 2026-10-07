@@ -5,12 +5,11 @@ import { useEditor } from "@/lib/store";
 import { localEdit } from "@/lib/ai/localEdit";
 
 const SUGGESTIONS = [
-  "Hazlo más agresivo y urgente",
-  "Cambia el color de acento a verde",
-  "Agrega una sección de preguntas frecuentes",
-  "Reescribe el hero para mamás de 30 a 45 años",
+  "Haz los textos más cortos y directos",
+  "Agrega preguntas frecuentes",
+  "Refuerza el pago contra entrega",
+  "Cambia el color principal a verde",
   "Quita el contador",
-  "Haz el copy más corto y directo",
 ];
 
 export default function AiBar({ aiAvailable }: { aiAvailable: boolean }) {
@@ -20,6 +19,7 @@ export default function AiBar({ aiAvailable }: { aiAvailable: boolean }) {
   const setBusy = useEditor((s) => s.setBusy);
   const setToast = useEditor((s) => s.setToast);
   const [text, setText] = useState("");
+  const [focus, setFocus] = useState(false);
   type Msg = { role: "user" | "ai"; text: string };
   const [log, setLog] = useState<Msg[]>([]);
 
@@ -54,7 +54,7 @@ export default function AiBar({ aiAvailable }: { aiAvailable: boolean }) {
   }
 
   return (
-    <div className="aibar">
+    <div className={`aibar${focus ? " open" : ""}`}>
       {log.length > 0 && (
         <div className="aibar__log">
           {log.map((m, i) => (
@@ -63,20 +63,17 @@ export default function AiBar({ aiAvailable }: { aiAvailable: boolean }) {
         </div>
       )}
       <div className="aibar__in">
-        <span style={{ fontSize: 16 }}>{aiAvailable ? "✨" : "⚙️"}</span>
+        <span style={{ fontSize: 15, color: "var(--c-acc)" }}>✦</span>
         <input
-          className="inp"
           value={text}
           disabled={busy}
-          placeholder={
-            aiAvailable
-              ? "Describe el cambio: «hazlo más urgente», «agrega una comparativa», «cambia el precio a 129900»…"
-              : "Modo sin IA: «cambia el color a verde», «quita el contador», «agrega testimonios», «precio 129900»"
-          }
+          placeholder={aiAvailable ? "Pídele un cambio a la IA: «cambia el precio a 129.900»" : "Pide un cambio: «color verde», «quita el contador», «precio 129900»"}
+          onFocus={() => setFocus(true)}
+          onBlur={() => setTimeout(() => setFocus(false), 150)}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") run(text); }}
         />
-        <button className="btn pri" disabled={busy || !text.trim()} onClick={() => run(text)}>
+        <button className="btn pri sm" disabled={busy || !text.trim()} onClick={() => run(text)}>
           {busy ? "Aplicando…" : "Aplicar"}
         </button>
       </div>

@@ -25,12 +25,12 @@ export default function BlockLibrary({ at, onClose }: { at?: number; onClose: ()
     <div className="lib" onClick={onClose}>
       <div className="lib__p" onClick={(e) => e.stopPropagation()}>
         <div className="lib__h">
-          <b style={{ fontSize: 14.5 }}>Biblioteca de bloques</b>
+          <b style={{ fontSize: 14.5 }}>Agregar sección</b>
           <input
             className="inp"
             style={{ maxWidth: 240 }}
             autoFocus
-            placeholder="Buscar…"
+            placeholder="Buscar: precio, reseñas, preguntas…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />

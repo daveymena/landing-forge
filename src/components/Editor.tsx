@@ -98,60 +98,59 @@ export default function Editor({ initial }: { initial: PageSpec }) {
 
   if (!spec?.id) return <div style={{ padding: 40, color: "var(--c-mut)" }}>Cargando editor…</div>;
 
+  // La URL pública (/l/<slug>) es la que va en el anuncio y en WhatsApp.
+  const publicUrl = `/l/${spec.slug}`;
+  async function copyLink() {
+    await save();
+    const url = `${window.location.origin}${publicUrl}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setToast({ msg: `Enlace copiado: ${url}`, kind: "ok" });
+    } catch {
+      window.prompt("Copia el enlace de tu landing:", url);
+    }
+  }
+
   return (
     <div className="app">
       <div className="topbar">
-        <a className="btn sm ghost" href="/" title="Volver">←</a>
-        {/* En móvil primero: los paneles son lo primero que hace falta */}
-        <button className="btn sm m-only" onClick={() => setSide(s => s === "left" ? "none" : "left")} title="Bloques" aria-pressed={side === "left"}>☰ Bloques</button>
-        <button className="btn sm m-only" onClick={() => setSide(s => s === "right" ? "none" : "right")} title="Ajustes" aria-pressed={side === "right"}>⚙</button>
-        <div className="brand d-only"><span className="mark">LF</span></div>
+        <a className="btn sm ghost" href="/" title="Volver a mis landings">←</a>
+        <button className="btn sm m-only" onClick={() => setSide(s => s === "left" ? "none" : "left")} aria-pressed={side === "left"} title="Secciones">☰</button>
         <div className="tb-name" style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 13.5, fontWeight: 650, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 240 }}>
-            {spec.name}
-          </div>
-          <div style={{ fontSize: 10.8, color: "var(--c-dim)" }}>
-            {saving ? "Guardando…" : dirty ? "Cambios sin guardar" : "Todo guardado"}
+          <div className="tb-name__t">{spec.name}</div>
+          <div className="tb-name__s" style={{ color: saving || dirty ? "var(--c-warn)" : "var(--c-ok)" }}>
+            <span className="dot" />
+            <span style={{ color: "#64748b" }}>{saving ? "Guardando…" : dirty ? "Sin guardar" : "Guardado"}</span>
           </div>
         </div>
 
         <div className="sp" />
 
-        <div className="seg d-only">
-          {([["desktop", "🖥"], ["tablet", "▭"], ["mobile", "▯"]] as const).map(([d, ic]) => (
-            <button key={d} aria-pressed={device === d} onClick={() => setDevice(d)} title={d}>{ic}</button>
+        <div className="seg d-only" aria-label="Ver como">
+          {([["desktop", "Escritorio"], ["tablet", "Tablet"], ["mobile", "Móvil"]] as const).map(([d, l]) => (
+            <button key={d} aria-pressed={device === d} onClick={() => setDevice(d)}>{l}</button>
           ))}
         </div>
-
-        <button className="btn icon d-only" onClick={undo} disabled={!past} title="Deshacer (⌘Z)">↶</button>
-        <button className="btn icon d-only" onClick={redo} disabled={!future} title="Rehacer (⌘⇧Z)">↷</button>
+        <button className="btn icon ghost d-only" onClick={undo} disabled={!past} title="Deshacer (Ctrl+Z)">↶</button>
+        <button className="btn icon ghost d-only" onClick={redo} disabled={!future} title="Rehacer (Ctrl+Shift+Z)">↷</button>
 
         <div className="sp" />
 
-        <span className={`chip d-only ${ai ? "ok" : "warn"}`}>{ai ? "IA activa" : "Sin IA"}</span>
-        <button className="btn" onClick={save} disabled={saving}>Guardar</button>
-        <a className="btn d-only" href={`/api/export/${spec.id}?download=0`} target="_blank" rel="noreferrer">Ver página</a>
-        <a className="btn pri d-only" href={`/api/export/${spec.id}`}>⬇ Exportar HTML</a>
+        <button className="btn sm m-only" onClick={() => setSide(s => s === "right" ? "none" : "right")} aria-pressed={side === "right"}>Editar</button>
+        <a className="btn icon ghost d-only" href={`/api/export/${spec.id}`} title="Descargar HTML">⬇</a>
+        <button className="btn d-only" onClick={copyLink}>Copiar enlace</button>
+        <a className="btn pri" href={publicUrl} target="_blank" rel="noreferrer">Ver<span className="hide-m"> página</span></a>
       </div>
 
       <div className="main">
         <BlockList onAdd={(i) => { setLibAt(i); setLibOpen(true); }} />
         <div className="canvas">
-          <div className="canvas__bar">
-            <span className="chip">{spec.vertical}</span>
-            <span className="chip">{spec.theme.preset}</span>
-            <span className="chip">{spec.blocks.length} bloques</span>
-            <div className="sp" />
-            <span className="hint" style={{ margin: 0 }}>
-              Clic en un bloque para seleccionarlo · clic en un texto para editarlo en el sitio
-            </span>
-          </div>
           <Preview />
         </div>
 
         <div className="pane right">
           <div className="tabs" role="tablist">
-            {([["block", "Bloque"], ["theme", "Tema"], ["page", "Página"], ["integrations", "Conectar"]] as const).map(([k, l]) => (
+            {([["block", "Sección"], ["theme", "Diseño"], ["page", "Página"], ["integrations", "Conectar"]] as const).map(([k, l]) => (
               <button key={k} role="tab" aria-selected={panel === k} onClick={() => setPanel(k)}>{l}</button>
             ))}
           </div>

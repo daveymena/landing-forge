@@ -13,7 +13,7 @@ export function ThemePanel() {
 
   return (
     <div className="pane__b">
-      <label className="lbl">Preset</label>
+      <label className="lbl">Estilo de la página</label>
       <div className="presets" style={{ marginBottom: 14 }}>
         {PRESETS.map((p) => (
           <button

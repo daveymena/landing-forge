@@ -181,10 +181,10 @@ export default function Inspector() {
   if (!block) {
     return (
       <div className="pane__b">
-        <p className="hint">Selecciona un bloque en la lista de la izquierda o haz clic sobre él en la vista previa.</p>
-        <p className="hint">
-          Truco: haz clic en cualquier <b>texto</b> de la vista previa para editarlo directamente ahí.
-        </p>
+        <div className="empty" style={{ marginTop: 6 }}>
+          <b style={{ display: "block", color: "var(--c-txt)", marginBottom: 6 }}>Elige una sección</b>
+          Haz clic en cualquier parte de la página para editarla. Los textos se cambian escribiendo directamente encima.
+        </div>
       </div>
     );
   }
@@ -193,9 +193,9 @@ export default function Inspector() {
 
   return (
     <div className="pane__b">
-      <div className="row" style={{ marginBottom: 11 }}>
+      <div className="insp-h">
         <span className="blk__i">{def.icon}</span>
-        <b style={{ fontSize: 13.5 }}>{def.label}</b>
+        <b>{def.label}</b>
         <div className="sp" />
         <button className="btn sm" onClick={() => toggleVisible(block.id)}>
           {block.visible === false ? "Mostrar" : "Ocultar"}
@@ -203,7 +203,7 @@ export default function Inspector() {
       </div>
 
       <div className="fld">
-        <label className="lbl">Variante</label>
+        <label className="lbl">Estilo de la sección</label>
         <select className="sel" value={block.variant} onChange={(e) => setVariant(block.id, e.target.value)}>
           {def.variants.map((v) => <option key={v.value} value={v.value}>{v.label}</option>)}
         </select>
@@ -220,8 +220,8 @@ export default function Inspector() {
         </div>
       ))}
 
-      <details className="sect">
-        <summary>JSON del bloque</summary>
+      <details className="sect adv">
+        <summary>Avanzado (JSON)</summary>
         <div className="sect__b">
           <textarea
             className="inp"

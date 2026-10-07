@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import DropiConnect from "@/components/DropiConnect";
 import AiConnect from "@/components/AiConnect";
 import UrlImport, { type Extracted } from "@/components/UrlImport";
+import { VERTICAL_LABEL, type Vertical } from "@/lib/schema";
 
 interface SiteRow {
   id: string; name: string; slug: string; vertical: string;
-  preset: string; blocks: number; updatedAt: string;
+  preset: string; blocks: number; updatedAt: string; thumb?: string;
 }
 
 const EXAMPLES = [
@@ -41,6 +42,9 @@ export default function Home() {
   const [templateId, setTemplateId] = useState("");
   const [pro, setPro] = useState(false);
   const [baseSiteId, setBaseSiteId] = useState("");
+  const [mode, setMode] = useState<"text" | "url">("text");
+  const [showOpts, setShowOpts] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   async function loadAi() {
     try {
@@ -95,104 +99,144 @@ export default function Home() {
     load();
   }
 
+  const aiOk = !!ai?.aiAvailable;
+
   return (
     <div className="dash">
-      <div className="dash__w">
-        <div className="row" style={{ marginBottom: 30 }}>
+      <div className="dash__top">
+        <div>
           <div className="brand">
-            <span className="mark">LF</span> Landing&nbsp;Forge
+            <span className="mark">LF</span> Landing Forge
           </div>
           <div className="sp" />
           {ai && (
-            <span className={`chip ${ai.aiAvailable ? "ok" : "warn"}`}>
-              {ai.aiAvailable ? `IA activa · ${ai.providerLabel || ai.provider} · ${ai.model}` : "Sin IA · motor determinista"}
+            <span
+              className={`chip ${aiOk ? "ok" : "warn"}`}
+              title={aiOk ? `${ai.providerLabel || ai.provider} · ${ai.model}` : "Sin IA: se usa el motor básico"}
+            >
+              <span className="dot" /> {aiOk ? "IA" : "Sin IA"}<span className="hide-m">{aiOk ? " conectada" : ""}</span>
             </span>
+          )}
+          <button className="btn sm" onClick={() => setShowSettings((v) => !v)} aria-pressed={showSettings}>
+            ⚙<span className="hide-m"> Configuración</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="dash__w">
+        {showSettings && (
+          <div style={{ marginBottom: 32 }}>
+            <div className="sec-h" style={{ marginTop: 0 }}>Configuración</div>
+            <p className="hint" style={{ fontSize: 13, marginBottom: 12 }}>
+              El motor de IA que redacta las landings y la conexión con Dropi para los pedidos contraentrega.
+            </p>
+            <AiConnect onChanged={loadAi} />
+            <DropiConnect />
+          </div>
+        )}
+
+        <h1 className="hero-h">Crea una landing que vende</h1>
+        <p className="sub">
+          Cuéntanos qué vendes o pega el enlace del producto. Te entregamos la página lista: textos, fotos y
+          formulario de pedido. Después la ajustas con un clic o pidiéndoselo a la IA.
+        </p>
+
+        <div className="creator">
+          <div className="tabs" role="tablist">
+            <button role="tab" aria-selected={mode === "text"} onClick={() => setMode("text")}>Describir producto</button>
+            <button role="tab" aria-selected={mode === "url"} onClick={() => setMode("url")}>Desde un enlace</button>
+          </div>
+
+          {mode === "text" ? (
+            <div className="promptbox">
+              <textarea
+                value={prompt}
+                autoFocus
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") generate(); }}
+                placeholder="Ej: Masajeador cervical eléctrico, $89.900, pago contra entrega en Colombia. Para personas con dolor de cuello por trabajar en computador."
+              />
+              <div className="promptbox__f">
+                <span className="hint" style={{ margin: 0 }}>Incluye producto, precio, país y para quién es.</span>
+                <div className="sp" />
+                <button className="linkbtn" onClick={() => setShowOpts((v) => !v)}>
+                  {showOpts ? "Ocultar opciones" : "Opciones"}
+                </button>
+                <button className="btn pri" onClick={() => generate()} disabled={busy}>
+                  {busy ? "Generando… (≈1 min)" : "Generar landing"}
+                </button>
+              </div>
+              {err && <div className="chip err" style={{ marginTop: 10, whiteSpace: "normal" }}>{err}</div>}
+            </div>
+          ) : (
+            <div className="promptbox" style={{ paddingTop: 14 }}>
+              <UrlImport busy={busy} onUse={(source, url) => generate({ source, url })} />
+              {err && <div className="chip err" style={{ marginTop: 10, whiteSpace: "normal" }}>{err}</div>}
+            </div>
+          )}
+
+          {showOpts && mode === "text" && (
+            <div className="adv-opts">
+              <select className="sel" value={templateId} onChange={(e) => setTemplateId(e.target.value)} style={{ flex: 2, minWidth: 200 }}>
+                <option value="">Diseño: lo elige la IA</option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+              <select className="sel" value={baseSiteId} onChange={(e) => setBaseSiteId(e.target.value)} style={{ flex: 1, minWidth: 170 }}>
+                <option value="">Empezar desde cero</option>
+                {sites.map((s) => (
+                  <option key={s.id} value={s.id}>Basarse en: {s.name}</option>
+                ))}
+              </select>
+              <label className="row" style={{ gap: 7, cursor: "pointer", fontSize: 13 }} title="La IA arma la estructura libremente en vez de seguir el diseño">
+                <input className="sw" type="checkbox" checked={pro} onChange={(e) => setPro(e.target.checked)} />
+                Diseño libre
+              </label>
+            </div>
           )}
         </div>
 
-        <h1 className="hero-h">Describe tu producto.<br />Recibe una landing lista para vender.</h1>
-        <p className="sub">
-          Genera landings modernas para <b>dropshipping contraentrega</b>, <b>productos digitales</b> y{" "}
-          <b>suscripciones</b>. Edítalas a mano o por instrucciones, conéctalas a Dropi y expórtalas
-          como un único archivo HTML.
-        </p>
-
-        <div className="promptbox">
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") generate(); }}
-
-            placeholder="Ej: Landing para vender una freidora de aire de 5L en México a $1,290 MXN con pago contra entrega, envío gratis y garantía de 30 días. Público: familias que quieren cocinar más sano sin complicarse."
-          />
-          <div className="promptbox__f">
-            <span className="hint" style={{ margin: 0 }}>
-              Menciona país, precio, público y promesa. ⌘/Ctrl + Enter para generar.
-            </span>
-            <div className="sp" />
-            {err && <span className="chip err">{err}</span>}
-            <button className="btn pri" onClick={() => generate()} disabled={busy}>
-              {busy ? "Generando…" : "✨ Generar landing"}
-            </button>
+        {mode === "text" && (
+          <div className="examples">
+            <span className="hint">Prueba con:</span>
+            {EXAMPLES.map((e) => (
+              <button key={e.t} className="ex" onClick={() => setPrompt(e.p)}>{e.t}</button>
+            ))}
           </div>
+        )}
+
+        <div className="sec-h">
+          Tus landings {sites.length ? <small>{sites.length}</small> : null}
         </div>
-
-        <div className="row" style={{ gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-          <select className="sel" value={templateId} onChange={(e) => setTemplateId(e.target.value)} style={{ flex: 2, minWidth: 220 }}>
-            <option value="">Plantilla: automática (la IA elige)</option>
-            {templates.map((t) => (
-              <option key={t.id} value={t.id}>{t.name} · {t.hint.slice(0, 60)}</option>
-            ))}
-          </select>
-          <select className="sel" value={baseSiteId} onChange={(e) => setBaseSiteId(e.target.value)} style={{ flex: 1, minWidth: 160 }}>
-            <option value="">Desde cero</option>
-            {sites.map((s) => (
-              <option key={s.id} value={s.id}>Remix: {s.name}</option>
-            ))}
-          </select>
-          <label className="row" style={{ gap: 6, cursor: "pointer", fontSize: 13 }}>
-            <input type="checkbox" checked={pro} onChange={(e) => setPro(e.target.checked)} />
-            Modo pro (diseño libre)
-          </label>
-        </div>
-
-        <UrlImport busy={busy} onUse={(source, url) => generate({ source, url })} />
-
-        <div className="examples">
-          {EXAMPLES.map((e) => (
-            <button key={e.t} className="ex" onClick={() => setPrompt(e.p)}>
-              <b>{e.t}</b>
-              <span>{e.p.slice(0, 105)}…</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="sec-h">Integraciones</div>
-        <AiConnect onChanged={loadAi} />
-        <DropiConnect />
-
-        <div className="sec-h">Tus landings {sites.length ? `(${sites.length})` : ""}</div>
         {!sites.length && (
-          <p className="hint" style={{ fontSize: 13 }}>
-            Todavía no hay ninguna. Genera la primera con el cuadro de arriba.
-          </p>
+          <div className="empty">Todavía no tienes landings. Crea la primera arriba.</div>
         )}
         <div className="cards">
           {sites.map((s) => (
-            <div key={s.id} className="card2">
-              <div className="row">
-                <h3>{s.name}</h3>
-                <div className="sp" />
-                <span className="chip">{s.vertical}</span>
-              </div>
-              <div className="hint" style={{ margin: 0 }}>
-                {s.blocks} bloques · tema {s.preset} · {new Date(s.updatedAt).toLocaleString("es-CO")}
-              </div>
-              <div className="row" style={{ marginTop: 2 }}>
-                <a className="btn sm pri" href={`/editor/${s.id}`}>Abrir editor</a>
-                <a className="btn sm" href={`/api/export/${s.id}`}>Exportar HTML</a>
-                <div className="sp" />
-                <button className="btn sm danger" onClick={() => remove(s.id)}>Eliminar</button>
+            <div key={s.id} className="card2 site">
+              <a className="site__thumb" href={`/editor/${s.id}`} aria-label={`Editar ${s.name}`}>
+                {s.thumb ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={s.thumb} alt="" loading="lazy" />
+                ) : (
+                  initials(s.name)
+                )}
+              </a>
+              <div className="site__b">
+                <div>
+                  <h3 title={s.name}>{s.name}</h3>
+                  <div className="hint" style={{ margin: "3px 0 0" }}>
+                    {VERTICAL_LABEL[s.vertical as Vertical]?.split(" · ")[0] ?? s.vertical} · {haceCuanto(s.updatedAt)}
+                  </div>
+                </div>
+                <div className="row" style={{ gap: 6 }}>
+                  <a className="btn sm pri" href={`/editor/${s.id}`}>Editar</a>
+                  <a className="btn sm" href={`/l/${s.slug}`} target="_blank" rel="noreferrer">Ver</a>
+                  <div className="sp" />
+                  <a className="btn sm ghost" href={`/api/export/${s.id}`} title="Descargar HTML">⬇</a>
+                  <button className="btn sm ghost danger" onClick={() => remove(s.id)} title="Eliminar">✕</button>
+                </div>
               </div>
             </div>
           ))}
@@ -200,4 +244,22 @@ export default function Home() {
       </div>
     </div>
   );
+}
+
+function initials(name: string): string {
+  const w = name.replace(/[-_]+/g, " ").trim().split(/\s+/).filter(Boolean);
+  return ((w[0]?.[0] ?? "") + (w[1]?.[0] ?? "")).toUpperCase() || "LF";
+}
+
+function haceCuanto(iso: string): string {
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return "";
+  const min = Math.round((Date.now() - t) / 60000);
+  if (min < 1) return "ahora";
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.round(h / 24);
+  if (d < 30) return `hace ${d} ${d === 1 ? "día" : "días"}`;
+  return new Date(iso).toLocaleDateString("es-CO");
 }

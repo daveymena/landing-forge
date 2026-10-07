@@ -19,10 +19,8 @@ export default function BlockList({ onAdd }: { onAdd: (index?: number) => void }
   return (
     <div className="pane left">
       <div className="pane__h">
-        Bloques <span className="sp" />
-        <span style={{ color: "var(--c-dim)", textTransform: "none", letterSpacing: 0 }}>
-          {spec.blocks?.length ?? 0}
-        </span>
+        Secciones de la página <span className="sp" />
+        <span style={{ color: "var(--c-dim)" }}>{spec.blocks?.length ?? 0}</span>
       </div>
       <div className="pane__b">
         {(spec.blocks ?? []).map((b, i) => {
@@ -44,10 +42,7 @@ export default function BlockList({ onAdd }: { onAdd: (index?: number) => void }
               title={def?.label ?? b.type}
             >
               <span className="blk__i">{def?.icon ?? "▪"}</span>
-              <span className="blk__n">
-                {def?.label ?? b.type}
-                <span className="blk__v"> · {b.variant}</span>
-              </span>
+              <span className="blk__n">{def?.label ?? b.type}</span>
               <span className="blk__a">
                 <button
                   onClick={(e) => { e.stopPropagation(); toggleVisible(b.id); }}
@@ -63,8 +58,8 @@ export default function BlockList({ onAdd }: { onAdd: (index?: number) => void }
         })}
       </div>
       <div className="pane__f">
-        <button className="btn pri" style={{ width: "100%" }} onClick={() => onAdd()}>
-          + Agregar bloque
+        <button className="btn" style={{ width: "100%" }} onClick={() => onAdd()}>
+          + Agregar sección
         </button>
       </div>
     </div>

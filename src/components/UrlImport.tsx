@@ -86,24 +86,24 @@ export default function UrlImport({
   };
 
   return (
-    <div style={{ marginTop: 14 }}>
+    <div>
       <div className="row" style={{ gap: 8 }}>
         <input
           className="inp"
           style={{ flex: 1 }}
-          placeholder="…o pega la URL de un producto (Shopify, WooCommerce, Dropi, tienda del proveedor)"
+          placeholder="https://… enlace del producto en Dropi, Shopify, WooCommerce o la tienda del proveedor"
           value={url}
           spellCheck={false}
           onChange={(e) => setUrl(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && analyze()}
         />
         <button className="btn" onClick={analyze} disabled={loading || !url.trim()}>
-          {loading ? "Analizando…" : "Analizar"}
+          {loading ? "Leyendo…" : "Leer producto"}
         </button>
       </div>
-      <label className="row" style={{ gap: 6, marginTop: 8, cursor: "pointer", fontSize: 12.5 }}>
-        <input type="checkbox" checked={browserMode} onChange={(e) => setBrowserMode(e.target.checked)} />
-        Abrir con navegador real (Shein, AliExpress, páginas con JavaScript — tarda ~15 s)
+      <label className="row" style={{ gap: 7, marginTop: 10, cursor: "pointer", fontSize: 12.5, color: "var(--c-mut)" }}>
+        <input className="sw" type="checkbox" checked={browserMode} onChange={(e) => setBrowserMode(e.target.checked)} />
+        Lectura profunda (AliExpress, Shein y tiendas que no cargan los datos; tarda unos 15 s)
       </label>
 
       {err && (
@@ -115,7 +115,7 @@ export default function UrlImport({
       {data && (
         <div className="card2" style={{ marginTop: 10 }}>
           <div className="row" style={{ alignItems: "center", gap: 10, marginBottom: 10 }}>
-            <b style={{ fontSize: 13.5 }}>Datos encontrados en {data.host}</b>
+            <b style={{ fontSize: 13.5 }}>Esto encontramos en {data.host}</b>
             <span className={`chip ${conf >= 0.7 ? "ok" : conf >= 0.45 ? "warn" : "err"}`}>
               {conf >= 0.7 ? "fiables" : conf >= 0.45 ? "revisa antes de usar" : "poco fiables"}
             </span>
