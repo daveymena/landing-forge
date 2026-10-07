@@ -29,7 +29,7 @@ export async function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
   if (PUBLICO.some((re) => re.test(pathname))) return NextResponse.next();
 
-  const secreto = secretoDeSesion();
+  const secreto = await secretoDeSesion();
   // Sin secreto no hay con qué firmar: modo abierto, como antes del cambio.
   // Se avisa en cada respuesta para que se note en los registros.
   if (!secreto) {
@@ -39,7 +39,7 @@ export async function proxy(req: NextRequest) {
   }
 
   const clave = req.headers.get("x-api-key") || "";
-  const apiKey = claveApi();
+  const apiKey = await claveApi();
   if (apiKey && clave && igualesSeguro(clave, apiKey)) return NextResponse.next();
   if (await verificar(req.cookies.get(COOKIE)?.value, "s", secreto)) return NextResponse.next();
 
