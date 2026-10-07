@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { cookieDeSesion, firmar, igualesSeguro, secretoDeSesion, DURACION_SESION_S } from "@/lib/auth";
+import { CLAVE_PANEL_GENERICA, cookieDeSesion, firmar, igualesSeguro, secretoDeSesion, DURACION_SESION_S } from "@/lib/auth";
 
 /* POST /api/auth/login { email, password }
    Valida contra LANDINGFORGE_EMAIL/LANDINGFORGE_PASSWORD (o ADMIN_EMAIL/
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   const email = String(body.email || "").trim().toLowerCase();
   const password = String(body.password || "");
   const wantEmail = String(process.env.LANDINGFORGE_EMAIL || process.env.ADMIN_EMAIL || "").trim().toLowerCase();
-  const wantPass = String(process.env.LANDINGFORGE_PASSWORD || process.env.ADMIN_PASSWORD || "");
+  const wantPass = String(process.env.LANDINGFORGE_PASSWORD || process.env.ADMIN_PASSWORD || CLAVE_PANEL_GENERICA);
 
   if (!secretoDeSesion()) {
     return NextResponse.json({ ok: false, error: "El panel no tiene protección configurada (falta LANDING_API_KEY)." }, { status: 503 });

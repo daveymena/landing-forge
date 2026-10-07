@@ -14,10 +14,21 @@
 
 const enc = new TextEncoder();
 
-/** Secreto de firma. Sin él, el panel queda en "modo abierto" (como antes) y
- *  el middleware lo avisa: no se puede firmar nada sin secreto. */
+/** Valores GENÉRICOS (pedido del dueño 07-10: "colócalas genéricas y luego
+ *  las cambio"). Con ellos el panel queda protegido desde el primer deploy;
+ *  las variables de entorno, cuando existan, mandan. La MISMA clave por
+ *  defecto está en VentasPro (lib/landingforge-client.ts). CAMBIARLAS en
+ *  EasyPanel: LANDING_API_KEY (igual en los dos) y LANDINGFORGE_PASSWORD. */
+export const CLAVE_API_GENERICA = "vpf-generica-cambiar-7Qk2Lm9Xz4Rt";
+export const CLAVE_PANEL_GENERICA = "VentasPro-Forge-2026";
+
+export function claveApi(): string {
+  return String(process.env.LANDING_API_KEY || CLAVE_API_GENERICA).trim();
+}
+
+/** Secreto de firma de las sesiones. */
 export function secretoDeSesion(): string {
-  return String(process.env.LF_SESSION_SECRET || process.env.LANDING_API_KEY || "").trim();
+  return String(process.env.LF_SESSION_SECRET || claveApi()).trim();
 }
 
 async function hmacHex(secreto: string, dato: string): Promise<string> {

@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { COOKIE, igualesSeguro, secretoDeSesion, verificar } from "./lib/auth";
+import { COOKIE, claveApi, igualesSeguro, secretoDeSesion, verificar } from "./lib/auth";
 
 /* Todo el panel y su API exigen sesión firmada (lib/auth.ts) o la x-api-key
    del bot de VentasPro. Lo único público es lo que ve el CLIENTE FINAL: la
@@ -39,7 +39,7 @@ export async function proxy(req: NextRequest) {
   }
 
   const clave = req.headers.get("x-api-key") || "";
-  const apiKey = String(process.env.LANDING_API_KEY || "");
+  const apiKey = claveApi();
   if (apiKey && clave && igualesSeguro(clave, apiKey)) return NextResponse.next();
   if (await verificar(req.cookies.get(COOKIE)?.value, "s", secreto)) return NextResponse.next();
 
