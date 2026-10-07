@@ -4,6 +4,7 @@ import { saveSite } from "@/lib/db";
 import { dedupGallery, generateSpec } from "@/lib/ai/generate";
 import { applyVisualPass } from "@/lib/visual-brain";
 import { leerHechos } from "@/lib/ai/hechos";
+import { adaptarANuestro } from "@/lib/ai/adaptar";
 
 /* Compat con el bot: POST /api/landingforge/generate
    Recibe { productUrl?, productName?, productKind?, price?, currency?,
@@ -75,10 +76,19 @@ export async function POST(req: Request) {
     };
     // Completar con lo extraido si la URL aporto algo (fotos, precio).
   } else if (source) {
+    // La URL puede ser de OTRA tienda: entonces es referencia y lo nuestro
+    // (catalogo: nombre, precio, fotos, descripcion; hechos: marca) manda.
+    const priceNum = Number(String(body.price ?? "").replace(/[^\d.-]/g, "")) || 0;
+    source = adaptarANuestro(source, {
+      name: name && name !== "Producto" ? name : undefined,
+      price: priceNum || undefined,
+      currency: String(body.currency || "").toUpperCase().slice(0, 3) || undefined,
+      images: manualImages,
+      videos: manualVideos,
+      description: manualDesc,
+    }, warnings);
     if (!source.images?.length && manualImages.length) source = { ...source, images: manualImages };
-    if (!(source as any).videos?.length && manualVideos.length) (source as any).videos = manualVideos;
     if (!source.description && manualDesc) source = { ...source, description: manualDesc };
-    if ((!source.name || source.name === "Producto") && name) source = { ...source, name };
   }
 
   if (!source && !name) {

@@ -1,4 +1,5 @@
 import type { PageSpec, Block } from "../schema";
+import { sinMarcasAjenas } from "./adaptar";
 
 /* ------------------------------------------------------------------ *
  *  HECHOS DEL NEGOCIO: lo único que la landing puede prometer.
@@ -101,6 +102,8 @@ export interface Soporte {
   hechos?: HechosNegocio;
   /** nombre corto del producto, para reemplazar "Tu Marca" sin hechos */
   producto?: string;
+  /** marcas de la tienda de donde se sacó la ficha: no pueden aparecer */
+  marcasAjenas?: string[];
 }
 
 export function ajustarAHechos(spec: PageSpec, s: Soporte): { spec: PageSpec; cambios: string[] } {
@@ -113,8 +116,15 @@ export function ajustarAHechos(spec: PageSpec, s: Soporte): { spec: PageSpec; ca
   const envioGratisOk = h ? h.envioGratis === true : /envio(s)? (gratis|gratuito|sin costo)/.test(t);
   const garantiaOk = h ? !!h.garantia : RE_GARANTIA.test(t);
 
+  const nuestra = h?.marca || (s.producto || "").split(/\s+/).slice(0, 3).join(" ");
   const blocks = spec.blocks.map((b): Block => {
     let p: any = b.props;
+
+    if (s.marcasAjenas?.length) {
+      const antes = JSON.stringify(p);
+      p = mapStrings(p, (x) => sinMarcasAjenas(x, s.marcasAjenas!, nuestra));
+      if (JSON.stringify(p) !== antes) cambios.push(`${b.type}: marca de otra tienda (${s.marcasAjenas.join(", ")}) → "${nuestra}"`);
+    }
 
     if (!envioGratisOk) {
       const antes = JSON.stringify(p);

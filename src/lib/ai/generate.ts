@@ -250,7 +250,9 @@ const CON_TITULO_OBLIGADO = ["problem", "faq", "benefits", "reviewsUgc", "testim
 function conHechos(spec: PageSpec, prompt: string, opts: GenerateOpts, avisos?: string[]): PageSpec {
   const src: any = opts.source || {};
   const r = ajustarAHechos(spec, {
-    texto: [prompt, src.description, ...(Array.isArray(src.bullets) ? src.bullets : [])].filter(Boolean).join(" | "),
+    // Lo que dice OTRA tienda no respalda nuestras promesas.
+    texto: (src.ajena ? [prompt, src.description] : [prompt, src.description, ...(Array.isArray(src.bullets) ? src.bullets : [])]).filter(Boolean).join(" | "),
+    marcasAjenas: Array.isArray(src.marcasAjenas) ? src.marcasAjenas : [],
     hechos: opts.hechos,
     producto: String(spec.product?.name || src.name || ""),
   });

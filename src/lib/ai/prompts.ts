@@ -129,6 +129,10 @@ export interface SourceData {
   host?: string;
   images?: string[];
   videos?: string[];
+  /** La ficha es de OTRA tienda: solo referencia (ver ai/adaptar.ts). */
+  ajena?: boolean;
+  referencia?: string;
+  marcasAjenas?: string[];
 }
 
 export function architectUser(
@@ -136,8 +140,17 @@ export function architectUser(
   hints?: { vertical?: string; preset?: string; source?: SourceData; pro?: boolean; baseSummary?: string; analisis?: AnalisisLanding | null; palette?: { accent: string; dark: boolean; roles: Array<{ wide: boolean }> } | null },
 ): string {
   const src = hints?.source;
-  const facts = src
+  const ajena = src?.ajena
     ? `
+REFERENCIA DE OTRA TIENDA (${src.host || "otra web"}) — NO es nuestra:
+usala SOLO para entender que es el producto, para que sirve y sus caracteristicas.
+PROHIBIDO en la landing: su marca o nombre de tienda${src.marcasAjenas?.length ? ` (${src.marcasAjenas.join(", ")})` : ""}, sus resenas,
+sus cifras de ventas, sus envios, garantias o devoluciones, y cualquier frase copiada.
+Texto de referencia: ${(src.referencia || "(sin texto)").slice(0, 700)}
+`
+    : "";
+  const facts = src
+    ? `${ajena}
 DATOS REALES extraídos de la ficha del producto (${src.host || "la URL indicada"}).
 Son HECHOS: respétalos exactamente, no inventes otros precios ni otro nombre.
 - Nombre: ${src.name || "(desconocido)"}

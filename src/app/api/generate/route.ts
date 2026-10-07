@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { generateSpec } from "@/lib/ai/generate";
 import { saveSite, getSite } from "@/lib/db";
 import { resolveProvider, PROVIDER_BY_ID } from "@/lib/ai/provider";
+import { adaptarANuestro } from "@/lib/ai/adaptar";
 import { extractFromUrl, type ExtractedProduct } from "@/lib/extract";
 import { parseBrief } from "@/lib/ai/brief";
 import { applyVisualPass } from "@/lib/visual-brain";
@@ -43,12 +44,17 @@ export async function POST(req: Request) {
     }
   }
 
+  // Ficha de OTRA tienda (lo normal al pegar una URL): referencia, no copia.
+  // El nombre y el precio que el dueno dejo en la tarjeta de importacion son
+  // los nuestros; marca, resenas y promesas de esa tienda no pasan.
+  if (source) source = adaptarANuestro(source, { name: source.name, price: source.price, currency: source.currency }, warnings);
+
   if (source && prompt.length < 8) {
     // con una URL basta: construimos el brief a partir de lo extraído
     const parts = [
       `Landing para vender ${source.name || "este producto"}`,
       source.price ? `a ${source.price} ${source.currency || ""}`.trim() : "",
-      source.brand ? `de la marca ${source.brand}` : "",
+
       source.description ? `. ${source.description.slice(0, 400)}` : "",
     ].filter(Boolean);
     prompt = parts.join(" ");
