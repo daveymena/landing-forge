@@ -15,6 +15,9 @@ const PUBLICO = [
   /^\/l\//,
   /^\/api\/public\//,
   /^\/api\/img\//,
+  // Fotos y videos subidos desde el editor: los carga la landing pública.
+  // Solo la LECTURA de un archivo concreto; subir (POST /api/media) pide sesión.
+  /^\/api\/media\/[a-f0-9]{16}\.\w+$/,
   /^\/api\/health$/,
   /^\/api\/auth\//,
   /^\/entrar$/,

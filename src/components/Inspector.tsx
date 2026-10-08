@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useEditor } from "@/lib/store";
 import { BY_TYPE, type Field } from "@/lib/blocks/catalog";
 import { getPath } from "@/lib/schema";
+import UploadButton from "@/components/UploadButton";
 
 function AiImageButton({ path, onChange }: { path: string; onChange: (path: string, v: any) => void }) {
   const productName = useEditor((s) => s.spec.product?.name || s.spec.name);
@@ -152,6 +153,7 @@ function FieldInput({
           {label}
           <input {...common} className="inp" value={value ?? ""} placeholder="https://… o data:image/…"
             onChange={(e) => onChange(path, e.target.value)} />
+          <UploadButton accept="image" onUploaded={(url) => onChange(path, url)} />
           <AiImageButton path={path} onChange={onChange} />
           {value ? (
             <img src={value} alt="" style={{ marginTop: 6, width: "100%", borderRadius: 8, border: "1px solid var(--c-line)" }} />
@@ -164,6 +166,8 @@ function FieldInput({
           {label}
           <input {...common} className="inp" value={value ?? ""} placeholder={field.placeholder}
             onChange={(e) => onChange(path, e.target.value)} />
+          {/* Campos de video: además de pegar el enlace, subir el archivo. */}
+          {/video|vimeo/i.test(field.label) && <UploadButton accept="video" onUploaded={(url) => onChange(path, url)} />}
           {field.help && <div className="hint">{field.help}</div>}
         </>
       );

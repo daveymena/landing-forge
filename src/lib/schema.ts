@@ -71,6 +71,8 @@ export const ProductSchema = z.object({
   compareAtPrice: z.number().default(0),
   currency: z.string().default("COP"),
   images: z.array(z.string()).default([]),
+  /** Videos del producto (URL de YouTube/TikTok/… o subidos). Van en la galería. */
+  videos: z.array(z.string()).default([]),
   dropiProductId: z.union([z.string(), z.number()]).optional(),
   dropiVariationId: z.union([z.string(), z.number()]).optional(),
   /**

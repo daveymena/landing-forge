@@ -212,6 +212,9 @@ ${
   background:var(--surface);padding:0;cursor:pointer;transition:border-color .2s}
 .gal__thumbs button[aria-selected=true]{border-color:var(--accent)}
 .gal__thumbs img{width:100%;height:100%;object-fit:cover;border-radius:0}
+.gal__thumbs button{position:relative}.gal__thumbs video{width:100%;height:100%;object-fit:cover;pointer-events:none}
+.gal__play{position:absolute;inset:0;margin:auto;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:12px;display:grid;place-items:center;padding-left:2px}
+.gal__main .vframe{border:0;border-radius:0}
 .ph{width:100%;height:100%;min-height:180px;aspect-ratio:16/10;display:grid;place-items:center;
   color:var(--muted);font-size:13px;border-radius:var(--r-lg);
   background:repeating-linear-gradient(45deg,var(--surface),var(--surface) 12px,var(--surface2) 12px,var(--surface2) 24px)}

@@ -1,5 +1,6 @@
 import type { PageSpec, Block } from "../schema";
 import { money } from "./blocks";
+import { esVideo } from "./video";
 
 /* ------------------------------------------------------------------ *
  *  Pulido antes de pintar: lo que una landing de contraentrega NO puede
@@ -207,7 +208,9 @@ export function pulirParaVender(spec: PageSpec): PageSpec {
           vistas.add(k);
           return true;
         });
-        if (p.items.length < 2) return ocultar(b);
+        // Un video solo SÍ suma (08-10: el dueño agregó un video y la sección
+        // entera desaparecía por esta regla, pensada para fotos repetidas).
+        if (p.items.length < 2 && !p.items.some((x: any) => esVideo(String(x.src)))) return ocultar(b);
         break;
       }
       case "comparison": {

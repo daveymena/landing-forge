@@ -1,3 +1,4 @@
+import { esVideo, leerVideo } from "./video";
 import type { Block, PageSpec } from "../schema";
 import { withDefaults } from "../blocks/catalog";
 
@@ -91,6 +92,9 @@ let MODO: Ctx["mode"] = "export";
 
 function img(src: string, alt = "", cls = "", eager = false): string {
   if (!src) return MODO === "edit" ? `<div class="ph">Imagen</div>` : "";
+  // Un video pegado en un campo de foto se muestra como video, no como una
+  // foto rota (08-10: "pongo el video y no aparece").
+  if (esVideo(src)) return `<div class="vframe${cls ? ` ${cls}` : ""}">${videoEmbed(src)}</div>`;
   return `<img src="${esc(src)}" alt="${esc(alt)}" loading="${eager ? "eager" : "lazy"}" decoding="async"${eager ? ` fetchpriority="high"` : ""}${cls ? ` class="${cls}"` : ""}>`;
 }
 
@@ -258,16 +262,23 @@ const R: Record<string, Renderer> = {
     if (b.variant === "product") {
       const imgs: string[] = list(p, "images").map((x: any) => x.src).filter(Boolean);
       // La foto elegida para el hero manda; despues las del producto, sin repetir.
-      const all = [...new Set([p.image, ...(imgs.length ? imgs : ctx.spec.product.images || [])].filter(Boolean) as string[])];
+      // Los videos del producto van en la misma galería, segundos: la primera
+      // impresión es la foto (carga al instante) y el video está a un toque.
+      const fotos = [...new Set([p.image, ...(imgs.length ? imgs : ctx.spec.product.images || [])].filter(Boolean) as string[])];
+      const videos = [...new Set([...fotos.filter(esVideo), ...((ctx.spec.product as any).videos || [])].filter(Boolean) as string[])];
+      const soloFotos = fotos.filter((s) => !esVideo(s));
+      const all = soloFotos.length ? [soloFotos[0], ...videos, ...soloFotos.slice(1)] : videos;
       const price = Number(p.price) || Number(ctx.spec.product.price) || 0;
       const was = Number(p.compareAtPrice) || Number(ctx.spec.product.compareAtPrice) || 0;
       const pct = offPct(price, was);
       // Publicada sin fotos: sin recuadro rayado de "Foto del producto".
-      const main = all[0] ? img(all[0], p.title, "", true) : ctx.mode === "edit" ? `<div class="ph">Foto del producto</div>` : "";
+      const main = all[0] ? itemDeGaleria(all[0], p.title, true) : ctx.mode === "edit" ? `<div class="ph">Foto del producto</div>` : "";
       const gal = main
         ? `<div class="gal" data-lf-gallery>
         <div class="gal__main">${main}</div>
-        ${all.length > 1 ? `<div class="gal__thumbs">${all.map((s, i) => `<button type="button" aria-selected="${i === 0}" aria-label="Foto ${i + 1}" data-i="${i}" data-src="${esc(s)}">${img(s, "")}</button>`).join("")}</div>` : ""}
+        ${all.length > 1 ? `<div class="gal__thumbs">${all.map((s, i) => esVideo(s)
+          ? `<button type="button" aria-selected="${i === 0}" aria-label="Video" data-i="${i}" data-video="1">${miniaturaDeVideo(s, soloFotos[0])}<template>${itemDeGaleria(s, "", false)}</template></button>`
+          : `<button type="button" aria-selected="${i === 0}" aria-label="Foto ${i + 1}" data-i="${i}" data-src="${esc(s)}">${img(s, "")}</button>`).join("")}</div>` : ""}
       </div>`
         : "";
       const priceBox = price
@@ -429,7 +440,7 @@ const R: Record<string, Renderer> = {
     const cards = items
       .map(
         (x: any, i: number) =>
-          `<figure class="reveal">${img(x.src, x.caption)}${x.caption ? `<figcaption${f(ctx, `items.${i}.caption`)}>${rich(x.caption)}</figcaption>` : ""}</figure>`,
+          `<figure class="reveal">${esVideo(x.src) ? `<div class="vframe">${videoEmbed(x.src)}</div>` : img(x.src, x.caption)}${x.caption ? `<figcaption${f(ctx, `items.${i}.caption`)}>${rich(x.caption)}</figcaption>` : ""}</figure>`,
       )
       .join("");
     return `<section ${secAttrs(ctx, b)}><div class="wrap">${head(ctx, p)}
@@ -765,15 +776,33 @@ const R: Record<string, Renderer> = {
 };
 
 function videoEmbed(url: string, poster?: string): string {
-  const u = String(url || "");
-  if (!u) return poster ? img(poster, "", "", true) : `<div class="ph" style="aspect-ratio:16/9">Agrega la URL del video</div>`;
-  const yt = u.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/);
-  if (yt) return `<iframe src="https://www.youtube-nocookie.com/embed/${yt[1]}?rel=0" title="Video" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen loading="lazy"></iframe>`;
-  const vm = u.match(/vimeo\.com\/(?:video\/)?(\d+)/);
-  if (vm) return `<iframe src="https://player.vimeo.com/video/${vm[1]}" title="Video" allow="autoplay;fullscreen;picture-in-picture" allowfullscreen loading="lazy"></iframe>`;
-  if (/\.(mp4|webm|mov)(\?|$)/i.test(u))
-    return `<video controls playsinline preload="metadata"${poster ? ` poster="${esc(poster)}"` : ""}><source src="${esc(u)}"></video>`;
-  return `<iframe src="${esc(u)}" title="Video" allowfullscreen loading="lazy"></iframe>`;
+  const u = String(url || "").trim();
+  if (!u) return poster ? img(poster, "", "", true) : MODO === "edit" ? `<div class="ph" style="aspect-ratio:16/9">Agrega la URL del video o súbelo</div>` : "";
+  const v = leerVideo(u);
+  if (v?.tipo === "archivo") {
+    return `<video controls playsinline preload="metadata"${poster ? ` poster="${esc(poster)}"` : ""}><source src="${esc(v.src)}"></video>`;
+  }
+  if (v?.tipo === "iframe") {
+    return `<iframe src="${esc(v.src)}" title="Video" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture;fullscreen" allowfullscreen loading="lazy"></iframe>`;
+  }
+  // No es un enlace de video reconocible. Antes iba a un <iframe> con la página
+  // entera, que la mayoría bloquea: recuadro vacío y nadie sabía por qué.
+  return MODO === "edit"
+    ? `<div class="ph" style="aspect-ratio:16/9;padding:16px;text-align:center">Este enlace no es un video que se pueda mostrar. Usa YouTube, TikTok, Instagram, Facebook, Vimeo, Google Drive o sube el archivo.</div>`
+    : `<a class="btn btn--ghost" href="${esc(u)}" target="_blank" rel="noopener">▶ Ver video</a>`;
+}
+
+/* Un elemento de la galería del producto: foto o video. */
+function itemDeGaleria(src: string, alt: string, eager: boolean): string {
+  return esVideo(src) ? `<div class="vframe${leerVideo(src)?.tipo === "iframe" && (leerVideo(src) as any).vertical ? " vframe--v" : ""}">${videoEmbed(src)}</div>` : img(src, alt, "", eager);
+}
+
+/* Miniatura de un video para los botones de la galería (con el ▶ encima). */
+function miniaturaDeVideo(src: string, respaldo?: string): string {
+  const v = leerVideo(src);
+  const foto = v?.tipo === "iframe" ? v.miniatura : undefined;
+  const fondo = foto || respaldo;
+  return `${fondo ? img(fondo, "") : v?.tipo === "archivo" ? `<video muted playsinline preload="metadata" src="${esc(v.src)}#t=0.5"></video>` : ""}<span class="gal__play" aria-hidden="true">▶</span>`;
 }
 
 export function renderBlock(ctx: Ctx, b: Block): string {

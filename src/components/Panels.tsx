@@ -1,6 +1,7 @@
 "use client";
 
 import { useEditor } from "@/lib/store";
+import UploadButton from "@/components/UploadButton";
 import { PRESETS } from "@/lib/theme";
 import { VERTICAL_LABEL, VERTICALS } from "@/lib/schema";
 
@@ -209,7 +210,17 @@ export function PagePanel() {
             <textarea className="inp" style={{ minHeight: 86 }}
               value={(spec.product.images ?? []).join("\n")}
               onChange={(e) => patchRoot("product.images", e.target.value.split("\n").map((s) => s.trim()).filter(Boolean))} />
+            <UploadButton accept="image" label="⬆️ Subir fotos" onUploaded={(url) => patchRoot("product.images", [...(useEditor.getState().spec.product.images ?? []), url])} />
             <div className="hint">Se usan en el hero «Producto COD» cuando el bloque no trae galería propia.</div>
+          </div>
+          <div className="fld">
+            <label className="lbl">Videos del producto (uno por línea)</label>
+            <textarea className="inp" style={{ minHeight: 64 }}
+              placeholder="https://youtube.com/shorts/… · https://www.tiktok.com/@…/video/… · o súbelo"
+              value={((spec.product as any).videos ?? []).join("\n")}
+              onChange={(e) => patchRoot("product.videos", e.target.value.split("\n").map((s) => s.trim()).filter(Boolean))} />
+            <UploadButton accept="video" onUploaded={(url) => patchRoot("product.videos", [...((useEditor.getState().spec.product as any).videos ?? []), url])} />
+            <div className="hint">Aparecen en la galería del producto, al lado de las fotos. Sirven YouTube, TikTok, Instagram, Facebook, Vimeo, Google Drive o un archivo MP4/MOV de hasta 90 MB.</div>
           </div>
         </div>
       </details>

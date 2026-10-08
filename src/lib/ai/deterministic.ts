@@ -53,6 +53,7 @@ export function generateDeterministic(prompt: string, overrides: Partial<PageSpe
       compareAtPrice: brief.compareAtPrice,
       currency: brief.currency,
       images: [],
+      videos: [],
       variants: [],
       dropiVariationMap: {},
     },

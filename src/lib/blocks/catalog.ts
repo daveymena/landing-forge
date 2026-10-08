@@ -229,7 +229,7 @@ export const CATALOG: BlockDef[] = [
       { key: "cta2Href", label: "Destino secundario", type: "text" },
       { key: "image", label: "Imagen principal", type: "image" },
       { key: "images", label: "Galería (COD)", type: "list", itemLabelKey: "src", item: [{ key: "src", label: "URL", type: "image" }] },
-      { key: "videoUrl", label: "Video (YouTube/Vimeo/MP4)", type: "text" },
+      { key: "videoUrl", label: "Video (YouTube, TikTok, Instagram, Vimeo, MP4 o súbelo)", type: "text" },
       { key: "price", label: "Precio", type: "number" },
       { key: "compareAtPrice", label: "Precio tachado", type: "number" },
       { key: "rating", label: "Calificación (0-5)", type: "number" },
@@ -548,7 +548,7 @@ export const CATALOG: BlockDef[] = [
     fields: [
       { key: "title", label: "Título", type: "textarea", max: 80 },
       { key: "subtitle", label: "Subtítulo", type: "textarea", max: 180 },
-      { key: "url", label: "URL (YouTube / Vimeo / MP4)", type: "text" },
+      { key: "url", label: "Video: URL (YouTube, TikTok, Instagram, Facebook, Vimeo, MP4) o súbelo", type: "text" },
       { key: "poster", label: "Miniatura", type: "image" },
       { key: "ctaText", label: "Botón", type: "text", max: 28 },
       { key: "ctaHref", label: "Destino", type: "text" },

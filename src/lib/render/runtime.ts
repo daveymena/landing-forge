@@ -46,13 +46,17 @@ $$('[data-lf-dismiss]').forEach(function(b){b.addEventListener('click',function(
 
 /* ---------- galería de producto ---------- */
 $$('[data-lf-gallery]').forEach(function(g){
-  var main=$('.gal__main img',g)||null;
+  var holder=$('.gal__main',g);
   $$('.gal__thumbs button',g).forEach(function(b){
     b.addEventListener('click',function(){
       $$('.gal__thumbs button',g).forEach(function(x){x.setAttribute('aria-selected','false')});
       b.setAttribute('aria-selected','true');
+      /* video: se pinta el reproductor guardado en el <template> del botón */
+      var t=b.querySelector('template');
+      if(t){holder.innerHTML=t.innerHTML;return}
       var src=b.getAttribute('data-src');
-      if(main){main.src=src}else{var holder=$('.gal__main',g);holder.innerHTML='<img src="'+src+'" alt="">';main=$('img',holder)}
+      var main=$('img',holder);
+      if(main&&holder.children.length===1){main.src=src}else{holder.innerHTML='<img src="'+src+'" alt="">'}
     });
   });
 });
