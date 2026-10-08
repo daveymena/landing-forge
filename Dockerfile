@@ -1,6 +1,6 @@
 FROM node:22-slim AS base
 WORKDIR /app
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json .npmrc ./
 RUN npm ci
 # Navegador real para modo browser (Shein, AliExpress, JS pesado).
 RUN npx playwright install --with-deps chromium
