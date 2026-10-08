@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { addOrder, getSettings, getSite, type OrderRecord } from "@/lib/db";
+import { addOrder, getSettings, getSite, saveSite, type OrderRecord } from "@/lib/db";
 import { createDropi } from "@/lib/providers/dropi";
 import { uid } from "@/lib/schema";
 import { claveApi } from "@/lib/auth";
@@ -112,7 +112,10 @@ export async function POST(req: Request) {
      Dropi con el token del negocio, pantalla Pedidos, reintento y avisos. */
   const vp = (site?.settings as any)?.ventaspro || {};
   let enviadoAVentasPro = false;
-  if (kind === "cod" && vp.tenantId && vp.productId) {
+  // Toda landing de contraentrega va a VentasPro: con vínculo, por id; sin
+  // vínculo (creadas antes del 07-10), por el nombre del producto, y VentasPro
+  // devuelve el vínculo para guardarlo. Ver routes/landing-forge-entrada.ts.
+  if (kind === "cod" && site) {
     const clave = await claveApi();
     if (!clave) {
       record.provider = "ventaspro";
@@ -126,6 +129,7 @@ export async function POST(req: Request) {
           body: JSON.stringify({
             tenantId: vp.tenantId,
             productId: vp.productId,
+            productName: site.product?.name || site.name,
             nombre: [payload.name, payload.surname].filter(Boolean).join(" "),
             telefono: payload.phone,
             documento: payload.dni,
@@ -147,6 +151,11 @@ export async function POST(req: Request) {
           enviadoAVentasPro = true;
           record.providerOrderId = String(d.pedidoId ?? "");
           record.status = "enviado_proveedor";
+          if (d.vinculo?.tenantId && d.vinculo?.productId && !(vp.tenantId && vp.productId)) {
+            try {
+              await saveSite({ ...site, settings: { ...site.settings, ventaspro: { tenantId: Number(d.vinculo.tenantId), productId: Number(d.vinculo.productId) } } } as any);
+            } catch { /* el pedido ya entró; el vínculo se vuelve a resolver la próxima */ }
+          }
         } else {
           record.providerError = String(d.error || `VentasPro respondio ${r.status}`).slice(0, 300);
           record.status = "error";
@@ -160,7 +169,7 @@ export async function POST(req: Request) {
   }
 
   /* ---------- Dropi ---------- */
-  if (!enviadoAVentasPro && !(vp.tenantId && vp.productId) && kind === "cod" && provider === "dropi" && settings.dropi.token) {
+  if (!enviadoAVentasPro && record.provider !== "ventaspro" && kind === "cod" && provider === "dropi" && settings.dropi.token) {
     try {
       const dropi = createDropi(settings);
       const res = await dropi.createOrder({
