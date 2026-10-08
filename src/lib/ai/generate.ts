@@ -212,9 +212,10 @@ function applySource(spec: PageSpec, src: ExtractedProduct): PageSpec {
       const extra = norm.filter((c: any) => c.src !== imgs[0] && !imgs.includes(c.src));
       p.items = [...fromSource, ...extra];
     }
+    // beforeAfter: la foto del producto NUNCA va en "Antes" (el antes es el
+    // dolor sin el producto). Sin foto real del antes, columnas de texto.
     if (b.type === "beforeAfter") {
-      if (!p.beforeImage) p.beforeImage = imgs[0];
-      if (!p.afterImage && imgs[1]) p.afterImage = imgs[1];
+      if (p.beforeImage && imgs.includes(p.beforeImage)) p.beforeImage = "";
     }
     if (b.type === "bundle" || b.type === "codForm") {
       if (!p.image) p.image = imgs[0];
@@ -255,6 +256,8 @@ function conHechos(spec: PageSpec, prompt: string, opts: GenerateOpts, avisos?: 
     marcasAjenas: Array.isArray(src.marcasAjenas) ? src.marcasAjenas : [],
     hechos: opts.hechos,
     producto: String(spec.product?.name || src.name || ""),
+    // Solo la valoracion de NUESTRA ficha cuenta; la de otra tienda no es nuestra.
+    valoracion: !src.ajena && Number(src.rating) > 0 ? { rating: Number(src.rating), count: Number(src.ratingCount) || 0 } : null,
   });
   if (r.cambios.length && avisos) avisos.push(`Coherencia con el negocio: ${r.cambios.join("; ")}.`);
   return r.spec;

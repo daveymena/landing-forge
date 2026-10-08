@@ -28,6 +28,8 @@ export interface HechosNegocio {
   pago?: string;
   /** "tu" (defecto) | "usted" */
   trato?: string;
+  /** Resenas REALES del negocio (las unicas que la landing puede mostrar). */
+  testimonios?: Array<{ nombre: string; ciudad?: string; texto: string }>;
 }
 
 export function leerHechos(raw: unknown): HechosNegocio | undefined {
@@ -47,6 +49,13 @@ export function leerHechos(raw: unknown): HechosNegocio | undefined {
     pago: txt(r.pago, 80),
     trato: r.trato === "usted" ? "usted" : "tu",
   };
+  if (Array.isArray(r.testimonios)) {
+    const t = r.testimonios
+      .map((x: any) => ({ nombre: txt(x?.nombre, 40) || "", ciudad: txt(x?.ciudad, 40), texto: txt(x?.texto, 240) || "" }))
+      .filter((x: any) => x.nombre && x.texto)
+      .slice(0, 6);
+    if (t.length) h.testimonios = t;
+  }
   return h;
 }
 
@@ -67,6 +76,11 @@ export function bloqueDeHechos(h?: HechosNegocio): string {
     h.garantia
       ? `- Garantía: ${[h.garantia.dias ? `${h.garantia.dias} días` : "", h.garantia.descripcion].filter(Boolean).join(" — ")}. Usa EXACTAMENTE esto, sin agrandarla.`
       : "- Garantía / devolución de dinero: NO existe. No la menciones en ningún bloque.",
+  );
+  l.push(
+    h.testimonios?.length
+      ? `- Reseñas reales (usa SOLO estas, textuales): ${h.testimonios.map((t) => `"${t.texto}" — ${t.nombre}${t.ciudad ? `, ${t.ciudad}` : ""}`).join(" | ")}.`
+      : "- Reseñas / estrellas / cifras de clientes: NO hay. No incluyas testimonios, calificaciones ni \"más de N clientes\".",
   );
   return `\n\nHECHOS DEL NEGOCIO (son los únicos datos operativos válidos; lo que no está acá no se promete):\n${l.join("\n")}\n${trato}`;
 }
@@ -104,7 +118,18 @@ export interface Soporte {
   producto?: string;
   /** marcas de la tienda de donde se sacó la ficha: no pueden aparecer */
   marcasAjenas?: string[];
+  /** Valoracion REAL de la ficha propia (no de otra tienda). */
+  valoracion?: { rating: number; count: number } | null;
 }
+
+/* Prueba social inventada: el generador y el LLM ponian "4.8 · 2.147
+   reseñas", "Más de 2.000 clientes", "Compra verificada" y tres resenas con
+   nombre en TODAS las landings (auditoria 07-10). Es publicidad enganosa
+   (Estatuto del Consumidor) y el cliente de Facebook la huele. Regla: prueba
+   social real o ninguna. */
+const RE_PRUEBA =
+  /(\+|m[aá]s de|miles de|cientos de)\s*[\d.,]*\s*(mil\s+)?(clientes|personas|colombian[oa]s|compradores|familias|usuari[oa]s|pedidos|mam[aá]s)|[\d.,]+\s*(mil\s+)?(rese[ñn]as|opiniones|valoraciones|calificaciones|clientes|vendid[oa]s)|\d[.,]\d\s*\/\s*5|verificad[oa]s?/i;
+const STAT_PRUEBA = /client|rese[ñn]|opini|valora|califica|vendid|pedido|estrella|satisf|usuari|★/i;
 
 export function ajustarAHechos(spec: PageSpec, s: Soporte): { spec: PageSpec; cambios: string[] } {
   const cambios: string[] = [];
@@ -141,7 +166,10 @@ export function ajustarAHechos(spec: PageSpec, s: Soporte): { spec: PageSpec; ca
       const items = Array.isArray(p.items)
         ? p.items.filter((x: any) => !RE_GARANTIA.test(JSON.stringify(x ?? "")))
         : p.items;
-      p = { ...p, ...(Array.isArray(p.items) ? { items } : {}) };
+      // Las filas de la comparativa tambien: una fila "Garantía de 30 días"
+      // vaciada salia como un check suelto sin texto.
+      const rows = Array.isArray(p.rows) ? p.rows.filter((x: any) => !RE_GARANTIA.test(JSON.stringify(x ?? ""))) : p.rows;
+      p = { ...p, ...(Array.isArray(p.items) ? { items } : {}), ...(Array.isArray(p.rows) ? { rows } : {}) };
       p = mapStrings(p, (x) => sinFrasesCon(x, RE_GARANTIA));
       if (JSON.stringify(p) !== antes) cambios.push(`${b.type}: promesa de garantía/devolución sin respaldo, retirada`);
     } else if (h?.garantia && b.type === "guarantee") {
@@ -151,6 +179,41 @@ export function ajustarAHechos(spec: PageSpec, s: Soporte): { spec: PageSpec; ca
         ...(dias ? { title: `Garantía de ${dias} días`, badge: `${dias} días` } : {}),
         ...(h.garantia.descripcion ? { body: h.garantia.descripcion } : {}),
       };
+    }
+
+    // ── Prueba social: real o ninguna ──
+    const val = s.valoracion && s.valoracion.rating > 0 ? s.valoracion : null;
+    const reales = h?.testimonios?.length ? h.testimonios : null;
+    if ((b.type === "reviewsUgc" || b.type === "testimonials") && b.visible !== false) {
+      if (!reales) {
+        cambios.push(`${b.type}: reseñas sin respaldo, oculto`);
+        return { ...b, visible: false };
+      }
+      p = {
+        ...p,
+        items: reales.map((t) =>
+          b.type === "reviewsUgc"
+            ? { quote: t.texto, name: t.ciudad ? `${t.nombre} · ${t.ciudad}` : t.nombre, rating: 5, verified: false, image: "" }
+            : { quote: t.texto, name: t.nombre, role: t.ciudad || "", rating: 5, avatar: "" },
+        ),
+      };
+    }
+    if ("rating" in p || "ratingCount" in p) {
+      const antes = `${p.rating}|${p.ratingCount}`;
+      p = { ...p, rating: val ? val.rating : 0, ratingCount: val && val.count ? String(val.count) : "" };
+      if (`${p.rating}|${p.ratingCount}` !== antes && !val) cambios.push(`${b.type}: calificación inventada, retirada`);
+    }
+    if (b.type === "stats" && Array.isArray(p.items) && !val) {
+      const items = p.items.filter((x: any) => !STAT_PRUEBA.test(`${x?.value ?? ""} ${x?.label ?? ""}`));
+      if (items.length !== p.items.length) cambios.push("stats: cifras de clientes/reseñas sin respaldo, retiradas");
+      if (items.length < 2) return { ...b, visible: false };
+      p = { ...p, items };
+    }
+    if (!val && !reales) {
+      const antes = JSON.stringify(p);
+      p = mapStrings(p, (x, k) => (/^(quote|name|role)$/.test(k) ? x : sinFrasesCon(x, RE_PRUEBA)));
+      if (Array.isArray(p.items)) p.items = p.items.map((x: any) => (x && typeof x === "object" && "verified" in x ? { ...x, verified: false } : x));
+      if (JSON.stringify(p) !== antes) cambios.push(`${b.type}: cifras de clientes/reseñas sin respaldo, retiradas`);
     }
 
     if (b.type === "navbar" || b.type === "footer") {

@@ -17,9 +17,9 @@ export const EXEMPLARS: Exemplar[] = [
   {
     id: "cod-bolso",
     vertical: "cod",
-    label: "COD Bolso antirrobo (oferta 2x1, urgency)",
-    flow: "announcement(marquee) → navbar(minimal) → hero(product) → trustIcons(row) → countdown(bar) → benefits(grid) → gallery(scroll) → reviewsUgc(scroll) → comparison(duel) → bundle(cards) → countdown(block) → codForm(split) → guarantee(banner) → faq(accordion) → ctaFinal(gradient) → stickyCta(bar)",
-    copy: "Titular: «Lleva todo seguro y con estilo: antirrobo, impermeable y con USB». Bundle: 1×89900, 2×159900(featured), 3×219900. Reviews con nombre+ciudad: «Lina, Bogotá: me llegó en 2 días…». FAQ objeciones: pago al recibir, demora 24-72h, devolución 30 días.",
+    label: "COD Bolso antirrobo (product page contraentrega, modelo aprobado)",
+    flow: "announcement(solid) → navbar(minimal) → hero(product) → trustIcons(row) → benefits(grid) → beforeAfter(columns) → bundle(cards) → codForm(split) → guarantee(card, solo si es real) → faq(accordion) → ctaFinal(gradient) → footer(simple) → stickyCta(bar) → whatsappFab(pill)",
+    copy: "Titular: «Lleva todo seguro y con estilo: antirrobo, impermeable y con USB». Precio pegado al titular. Bundle: 1×89900, 2×159900(featured), 3×219900. Sin reseñas ni estrellas salvo que vengan en los HECHOS. FAQ objeciones: ¿de verdad pago al recibir?, ¿cuánto demora?, ¿cómo confirmo mi pedido?",
   },
   {
     id: "saas-mastershop",

@@ -97,7 +97,7 @@ function titleTag(b: Brief): string {
 function metaDesc(b: Brief): string {
   const ben = BENEFIT_BY_CATEGORY[b.category]?.[0] ?? "la solución que buscabas";
   return b.vertical === "cod"
-    ? `${b.productName}: ${ben}. Pago contra entrega, envío en 24–72 h y garantía de 30 días.`
+    ? `${b.productName}: ${ben}. Pide hoy y paga al recibir en tu casa.`
     : `${b.productName}: ${ben}. Empieza hoy mismo.`;
 }
 
@@ -124,38 +124,45 @@ function capitalize(s: string) { return s.charAt(0).toUpperCase() + s.slice(1); 
 
 /* ----------------------------- COD ----------------------------- */
 
+/* Estructura COD = product page contraentrega aprobada por el dueño (modelo
+   Momo/Releasit, ver VentasPro lib/landing/renderer-cod.ts): hero con galería,
+   precio y botón → sellos → beneficios → contraste → paquetes → formulario →
+   garantía (se oculta si no es real) → FAQ → cierre → barra fija.
+   Fuera del plan B: reseñas, "4.8 · 2.147 reseñas", comparativa contra "el
+   genérico" y contador de 15 minutos con stock de mentira: todo inventado. */
 function codBlocks(b: Brief): Block[] {
   const cur = b.currency;
   const p1 = b.price;
-  const p2 = Math.round(p1 * 1.7 / 100) * 100;
-  const p3 = Math.round(p1 * 2.3 / 100) * 100;
-  const save2 = b.compareAtPrice * 2 - p2;
-  const save3 = b.compareAtPrice * 3 - p3;
+  // Paquetes redondeados a precio de vitrina ($152.900, no $152.830).
+  const vitrina = (v: number) => (cur === "COP" && v >= 10000 ? Math.ceil(v / 1000) * 1000 - 100 : Math.round(v / 100) * 100);
+  const p2 = vitrina(p1 * 1.7);
+  const p3 = vitrina(p1 * 2.3);
+  const was1 = b.compareAtPrice > p1 ? b.compareAtPrice : p1;
+  const save2 = was1 * 2 - p2;
+  const save3 = was1 * 3 - p3;
 
   return [
-    B("announcement", "gradient", { text: `🚚 Envío GRATIS a todo el país · Pagas al recibir`, dismissible: true }),
+    B("announcement", "gradient", { text: `🚚 Pagas al recibir · Envío a todo el país`, dismissible: true }),
     B("navbar", "minimal", { logoText: b.productName, ctaText: "Pedir ahora", ctaHref: "#pedido" }),
     B("hero", "product", {
       eyebrow: "Pago contra entrega",
-      title: `${b.productName}: ${ben(b, 0)}`,
-      subtitle: `Diseñado para ${b.audience || "quienes buscan una solución que de verdad funcione"}. Recíbelo en 24–72 horas y paga solo cuando lo tengas en tus manos.`,
-      ctaText: "Pedir contra entrega",
+      title: `${capitalize(ben(b, 0))} con ${b.productName}`,
+      subtitle: `Recíbelo en casa y paga solo cuando lo tengas en tus manos.`,
+      ctaText: "Pedir y pagar al recibir",
       ctaHref: "#pedido",
-      ctaSub: "Sin pagos anticipados · Garantía de 30 días",
+      ctaSub: "Sin pagos anticipados · Te confirmamos por WhatsApp",
       price: b.price,
       compareAtPrice: b.compareAtPrice,
-      rating: 4.8,
-      ratingCount: "2.147",
       bullets: [
         { text: capitalize(ben(b, 0)) },
         { text: capitalize(ben(b, 1)) },
-        { text: "Envío gratis y pago contra entrega en todo el país" },
+        { text: "Pagas en efectivo cuando lo recibes" },
       ],
     }),
     B("trustIcons", "row", {}),
     B("benefits", "grid", {
       eyebrow: "Beneficios",
-      title: `Por qué ${b.productName} sí funciona`,
+      title: `Lo que cambia cuando tienes ${b.productName}`,
       subtitle: "",
       items: benefitItems(b, 3),
       bg: "surface",
@@ -167,48 +174,23 @@ function codBlocks(b: Brief): Block[] {
       before: [{ text: "Gastas en soluciones que no duran" }, { text: "Pierdes tiempo probando opciones" }, { text: "El problema siempre vuelve" }],
       after: [{ text: capitalize(ben(b, 0)) }, { text: capitalize(ben(b, 1)) }, { text: "Resultado que se mantiene" }],
     }),
-    B("reviewsUgc", "grid", {
-      title: `Más de 2.000 clientes ya lo tienen`,
-      rating: 4.8,
-      ratingCount: "2.147",
-      bg: "surface",
-    }),
-    B("comparison", "duel", {
-      title: "Nosotros vs. el genérico del mercado",
-      usLabel: b.productName,
-      themLabel: "Producto genérico",
-      rows: [
-        { feature: "Pagas solo cuando lo recibes", themFeature: "Te toca pagar por adelantado", us: "sí", them: "no" },
-        { feature: "Garantía de 30 días", themFeature: "Sin garantía: si falla, lo perdiste", us: "sí", them: "no" },
-        { feature: "Soporte por WhatsApp", themFeature: "Soporte que nunca responde", us: "sí", them: "no" },
-        { feature: "Envío en 24–72 horas", themFeature: "Envío de 7 a 15 días hábiles", us: "sí", them: "7–15 días" },
-      ],
-    }),
     B("bundle", "cards", {
       eyebrow: "Oferta de hoy",
       title: "Mientras más llevas, menos pagas",
-      subtitle: "Envío gratis en todas las opciones · Pagas al recibir",
+      subtitle: "Pagas al recibir en todas las opciones",
       currency: cur,
       options: [
-        { label: "1 unidad", qty: 1, price: p1, compareAtPrice: b.compareAtPrice, featured: false, note: "Para probarlo" },
-        { label: "2 unidades", qty: 2, price: p2, compareAtPrice: b.compareAtPrice * 2, badge: "Más vendido", featured: true, note: `Ahorras ${money(save2, cur)}` },
-        { label: "3 unidades", qty: 3, price: p3, compareAtPrice: b.compareAtPrice * 3, badge: "Mejor precio", featured: false, note: `Ahorras ${money(save3, cur)}` },
+        { label: "1 unidad", qty: 1, price: p1, compareAtPrice: b.compareAtPrice > p1 ? b.compareAtPrice : 0, featured: false, note: "" },
+        { label: "2 unidades", qty: 2, price: p2, compareAtPrice: was1 * 2, badge: "Más elegido", featured: true, note: `Ahorras ${money(save2, cur)}` },
+        { label: "3 unidades", qty: 3, price: p3, compareAtPrice: was1 * 3, badge: "Mejor precio", featured: false, note: `Ahorras ${money(save3, cur)}` },
       ],
-      ctaText: "Pedir contra entrega",
+      ctaText: "Pedir y pagar al recibir",
       ctaHref: "#pedido",
-    }),
-    B("countdown", "block", {
-      title: "Esta oferta termina en",
-      subtitle: "Después de este tiempo el precio vuelve a su valor normal.",
-      minutes: 15,
-      stockLeft: 7,
-      stockTotal: 40,
-      bg: "accent",
     }),
     B("codForm", "split", {
       eyebrow: "Último paso",
       title: "Completa tus datos y paga al recibir",
-      subtitle: "Te llamamos o escribimos por WhatsApp para confirmar antes de despachar. No pagas nada ahora.",
+      subtitle: "Te escribimos por WhatsApp para confirmar antes de despachar. No pagas nada ahora.",
       submitText: "Confirmar pedido contra entrega",
     }),
     B("guarantee", "card", {
@@ -221,23 +203,23 @@ function codBlocks(b: Brief): Block[] {
       eyebrow: "Dudas",
       title: "Preguntas frecuentes",
       items: [
-        { q: "¿Realmente pago cuando lo recibo?", a: "Sí. No pagas absolutamente nada ahora. Entregas el dinero al mensajero en el momento de la entrega." },
-        { q: "¿Cuánto tarda el envío?", a: "Entre 24 y 72 horas hábiles según tu ciudad. Te enviamos el número de guía por WhatsApp apenas se despacha." },
-        { q: "¿Hacen envíos a todo el país?", a: "Sí, cubrimos todo el territorio nacional con nuestras transportadoras aliadas." },
+        { q: "¿De verdad pago cuando lo recibo?", a: "Sí. No pagas nada ahora: le entregas el dinero al mensajero cuando el producto llega a tu puerta." },
+        { q: "¿Cuánto tarda en llegar?", a: "Depende de tu ciudad. Te confirmamos el tiempo exacto por WhatsApp y te mandamos la guía apenas sale el pedido." },
+        { q: "¿Cómo sé que mi pedido quedó bien?", a: "Después de llenar el formulario te escribimos por WhatsApp para confirmar tus datos antes de despacharlo." },
         { q: "¿Y si no me gusta o llega con algún problema?", a: "Tienes 30 días de garantía. Escríbenos por WhatsApp y coordinamos el cambio o la devolución sin costo." },
-        { q: "¿Necesito dar datos de tarjeta?", a: "No. Solo tu nombre, teléfono y dirección de entrega. Nada más." },
+        { q: "¿Necesito dar datos de tarjeta?", a: "No. Solo tu nombre, tu celular y la dirección de entrega. Nada más." },
       ],
       bg: "surface",
     }),
     B("ctaFinal", "gradient", {
       title: `Pide tu ${b.productName} hoy`,
-      subtitle: "Stock limitado a este precio. Pagas cuando lo recibes.",
-      ctaText: "Pedir contra entrega",
+      subtitle: "Pagas cuando lo recibes. Te confirmamos por WhatsApp antes de enviarlo.",
+      ctaText: "Pedir y pagar al recibir",
       ctaHref: "#pedido",
-      ctaSub: "Envío gratis · Garantía de 30 días · Soporte por WhatsApp",
+      ctaSub: "Pago contra entrega · Soporte por WhatsApp",
     }),
     B("footer", "simple", { brand: b.productName, tagline: metaDesc(b), copyright: `© ${new Date().getFullYear()} ${b.productName}. Todos los derechos reservados.` }),
-    B("stickyCta", "bar", { label: "Pago contra entrega", price: b.price, compareAtPrice: b.compareAtPrice, ctaText: "Pedir ahora", ctaHref: "#pedido" }),
+    B("stickyCta", "bar", { label: "Pagas al recibir", price: b.price, compareAtPrice: b.compareAtPrice, ctaText: "Pedir ahora", ctaHref: "#pedido" }),
     ...(b.whatsapp ? [B("whatsappFab", "pill", { phone: b.whatsapp, label: "Escríbenos", message: `Hola, quiero información sobre ${b.productName} 👋` })] : []),
   ];
 }

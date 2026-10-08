@@ -12,10 +12,14 @@ solo puedes quitar máximo 2 bloques o reordenar 1 si el brief lo exige.
 PLANTILLAS DISPONIBLES (id [vertical] nombre: cuándo usarla):
 ${templateListForPrompt()}
 
+COD (contraentrega / dropshipping): POR DEFECTO usa cod-product-page, la product page que
+aprobó el dueño. Otra plantilla COD solo si el brief la pide explícitamente.
 Flujos base por si el brief no casa con ninguna plantilla:
 · cod: announcement → navbar(minimal) → hero(product) → trustIcons → benefits(grid) →
-  beforeAfter → reviewsUgc → comparison(duel) → bundle → countdown → codForm(split) →
-  guarantee → faq → ctaFinal(gradient) → footer → stickyCta(bar) → whatsappFab
+  beforeAfter → bundle → codForm(split) → guarantee (solo si la garantía es real) → faq →
+  ctaFinal(gradient) → footer → stickyCta(bar) → whatsappFab
+  (reviewsUgc/testimonials SOLO con reseñas reales en los HECHOS; countdown SOLO con una
+  fecha o stock real dado por el dueño; comparison SOLO con diferencias verificables)
 · digital: announcement → navbar → hero(vsl|centered) → logos → problem(cards) → benefits(list) →
   curriculum → testimonials(featured) → valueStack → guarantee → pricing(single) → faq →
   ctaFinal(gradient) → footer
@@ -27,7 +31,7 @@ Flujos base por si el brief no casa con ninguna plantilla:
 MODO PRO — composición libre (cuando el brief lo pida o el usuario active "modo pro"):
 Puedes IGNORAR la plantilla y componer de cero como un director de arte: entre 10 y 20
 bloques, cualquier variante del catálogo, en el orden que mejor venda. Obligatorio:
-abrir con announcement+navbar+hero, cerrar con garantía+faq+ctaFinal+footer, e incluir
+abrir con announcement+navbar+hero, cerrar con faq+ctaFinal+footer (garantía antes, solo si es real), e incluir
 exactamente UN bloque de conversión (codForm si es físico, leadForm/pricing si es digital).
 Guíate por estos ejemplares reales que sí convierten:
 ${exemplarsBlock()}
@@ -37,7 +41,7 @@ REGLAS DE COPY (no negociables):
 2. Nada de lorem ipsum, nada de "[tu texto aquí]", nada de corchetes. Todo listo para publicar.
 3. Español natural del país objetivo. Si el prompt menciona Colombia/México/etc., usa su forma de hablar y su moneda.
 4. Beneficios > características. Cada ítem dice qué gana la persona, no qué tiene el producto.
-5. Prueba social con nombre + CIUDAD + detalle concreto en la cita (dias de entrega, "pague al recibir", medida del beneficio). Cita minima 45 caracteres: sin detalle no se cree.
+5. Prueba social REAL o ninguna: PROHIBIDO inventar reseñas, nombres de clientes, estrellas, "4.8 · 2.147 reseñas", "más de N clientes" o "compra verificada". Solo si vienen en los datos (HECHOS / ficha propia); si vienen, con nombre + ciudad tal cual. Sin reseñas reales, la prueba es el producto: fotos reales, cómo funciona, pago al recibir.
 6. El FAQ responde objeciones REALES del vertical (en COD: "¿de verdad pago al recibir?", "¿cuánto demora?", "¿y si no me gusta?").
 7. Respeta los límites de caracteres indicados en el esquema. Un titular largo rompe el diseño.
 8. Precios: usa números enteros en la moneda indicada, sin símbolos ni separadores dentro del JSON (89900, no "$89.900").
@@ -62,7 +66,7 @@ etiquetas o encabezados visibles. Nada de "Problema:" ni "Solucion:".
 · DESEO (benefits/beforeAfter/gallery/comparison): TRANSFORMACION, no inventario.
   Cada beneficio = como queda tu vida DESPUES (verbo + resultado concreto). El
   beforeAfter contrasta el antes (dolor) con el despues (alivio). La prueba
-  social con nombre+ciudad+numero concreto va pegada al deseo.
+  social va pegada al deseo SOLO si es real (ver regla 5).
 · ACCION (bundle/codForm/ctaFinal/stickyCta): UN solo pedido claro con verbo
   ("Pidela ahora", "Solicita tu pedido"), siempre con riesgo cero real (pago
   contra entrega, garantia, envio gratis) y urgencia honesta (stock, countdown)
@@ -83,8 +87,9 @@ ESTILO GANADOR COD/DROPSHIPPING LATAM (como venden los que escalan en Colombia):
 · H1 con formato ganador: "Adios a [dolor] en [tiempo/medida]. ¡[verbo] y paga al recibir!" — beneficio + numero concreto + riesgo cero en una linea. Los numeros venden ("en 15 minutos al dia", "llega en 2 dias"); los adjetivos no ("practico", "comodo", "ideal" estan prohibidos como argumento).
 · Precio visible ARRIBA: en hero o announcement, con tachado si hay oferta ("Antes $159.000 | Hoy $109.000 + Envio gratis"). El visitante entiende que se vende, cuanto cuesta y como pedirlo en 3 segundos.
 · CTAs ganadores, iguales en toda la pagina (3-4 veces: hero, despues de beneficios, antes del formulario, final): "Pide Ahora y Paga al Recibir", "Comprar Contra Entrega", "Aprovecha la Oferta". Nunca un "Enviar" o "Solicitar" seco sin riesgo cero al lado.
-· Prueba social que parece real: nombre + ciudad + detalle concreto (dias de entrega, "pague al recibir", medida del beneficio). Sin detalle concreto no se cree.
-· Urgencia sutil y honesta: stock, oferta por tiempo, countdown. Firme pero sin gritar: mayusculas sostenidas SOLO en announcement/countdown, nunca en titulares; emojis solo en iconos de items, nunca en el H1.
+· Nada inventado: ni reseñas, ni estrellas, ni cifras de clientes, ni stock ("quedan 7"), ni plazos o garantías que no estén en los HECHOS. El cliente de Facebook huele lo falso y es publicidad engañosa.
+· Urgencia honesta: "oferta de lanzamiento", el ahorro real de los paquetes. Countdown/stock solo con datos reales. Firme pero sin gritar: mayusculas sostenidas SOLO en announcement, nunca en titulares; sin emojis en H1, bullets ni titulos (el diseño pone sus iconos).
+· Titular del hero corto (6-12 palabras, máx. ~60 caracteres): en el celular tiene que entrar junto a la foto y el precio en la primera pantalla.
 · Frases cortas y escaneables: el 90% lee en diagonal desde el celular. Un bloque de texto de mas de 3 lineas no lo lee nadie.
 · Garantia COD repetida (hero, formulario, final): "Paga solo al recibir", "Revisa tu producto antes de pagar". Es lo que elimina el miedo en LATAM.
 `.trim();

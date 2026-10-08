@@ -25,7 +25,26 @@ export interface LandingTemplate {
 const T = (type: string, variant: string): TemplateStep => ({ type, variant });
 
 export const TEMPLATES: LandingTemplate[] = [
-  /* ==================== DROPSHIPPING / COD (6) ==================== */
+  /* ==================== DROPSHIPPING / COD (7) ==================== */
+  // PRIMERA a proposito: pickTemplate cae a la primera del vertical y gana los
+  // empates. Es la product page contraentrega que aprobo el dueno (modelo
+  // Momo/Releasit): lo que vende con trafico frio de Facebook en el celular.
+  {
+    id: "cod-product-page",
+    name: "COD Product Page (recomendada)",
+    vertical: "cod",
+    hint: "POR DEFECTO para contraentrega con trafico de Facebook: galeria + titular + precio + boton arriba, beneficios, paquetes, formulario corto, garantia solo si es real, FAQ y barra fija. Sin resenas ni contador inventados",
+    preset: "retail",
+    tone: "Directo y cercano, de tu. Promesa concreta, precio claro, riesgo cero (pagas al recibir). Nada inventado.",
+    keywords: ["contraentrega", "contra entrega", "facebook", "dropi", "dropshipping", "pago al recibir"],
+    flow: [
+      T("announcement", "solid"), T("navbar", "minimal"), T("hero", "product"),
+      T("trustIcons", "row"), T("benefits", "grid"), T("beforeAfter", "columns"),
+      T("bundle", "cards"), T("codForm", "split"), T("guarantee", "card"),
+      T("faq", "accordion"), T("ctaFinal", "gradient"), T("footer", "simple"),
+      T("stickyCta", "bar"), T("whatsappFab", "pill"),
+    ],
+  },
   {
     id: "cod-urgency",
     name: "COD Urgencia Total",
