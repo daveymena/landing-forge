@@ -125,6 +125,12 @@ export async function POST(req: Request) {
   const spec = res.spec;
 
   spec.settings.whatsapp = whatsapp || spec.settings.whatsapp || "";
+  // Vinculo con VentasPro: el pedido de esta landing se procesa alla.
+  const vp = body.ventaspro && typeof body.ventaspro === "object" ? body.ventaspro : {};
+  const vpTenant = Number(vp.tenantId), vpProducto = Number(vp.productId);
+  if (Number.isInteger(vpTenant) && vpTenant > 0 && Number.isInteger(vpProducto) && vpProducto > 0) {
+    (spec.settings as any).ventaspro = { tenantId: vpTenant, productId: vpProducto };
+  }
   (spec.settings as any).checkoutUrl = checkout;
   // Pasada visual completa: cerebro en contexto, stock gratis, OpenAI de emergencia, prune.
   await applyVisualPass(spec, aiProvider);

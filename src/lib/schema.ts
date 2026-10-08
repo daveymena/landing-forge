@@ -110,6 +110,15 @@ export const SettingsSchema = z.object({
       redirectUrl: z.string().default(""),
     })
     .default({}),
+  /** Negocio y producto de VentasPro (lo pone Atlas al crearla). Con esto el
+   *  pedido del formulario se procesa en VentasPro: Dropi con el token del
+   *  negocio, pantalla Pedidos, reintento y avisos. Ver /api/public/orders. */
+  ventaspro: z
+    .object({
+      tenantId: z.number().int().positive().optional(),
+      productId: z.number().int().positive().optional(),
+    })
+    .default({}),
   checkout: z
     .object({
       provider: z

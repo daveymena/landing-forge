@@ -71,6 +71,7 @@ export function generateDeterministic(prompt: string, overrides: Partial<PageSpe
             : "¡Listo! Revisa tu correo, te acabamos de enviar el acceso.",
         redirectUrl: "",
       },
+      ventaspro: {},
       checkout: { provider: "none", url: "" },
       pixels: { metaPixelId: "", tiktokPixelId: "", ga4Id: "", googleAdsId: "", customHead: "" },
     },

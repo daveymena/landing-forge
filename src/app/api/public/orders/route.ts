@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { addOrder, getSettings, getSite, type OrderRecord } from "@/lib/db";
 import { createDropi } from "@/lib/providers/dropi";
 import { uid } from "@/lib/schema";
+import { claveApi } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -104,8 +105,62 @@ export async function POST(req: Request) {
   const provider = site?.settings.integration.provider ?? "none";
   const settings = await getSettings();
 
+  /* ---------- VentasPro (el camino bueno) ----------
+     Auditoría 07-10: las landings decían "Dropi" pero Forge no tenía token
+     ni dropiProductId: el pedido quedaba solo en orders.json, sin avisar a
+     nadie. Si la landing es de un producto de VentasPro, el pedido va allá:
+     Dropi con el token del negocio, pantalla Pedidos, reintento y avisos. */
+  const vp = (site?.settings as any)?.ventaspro || {};
+  let enviadoAVentasPro = false;
+  if (kind === "cod" && vp.tenantId && vp.productId) {
+    const clave = await claveApi();
+    if (!clave) {
+      record.provider = "ventaspro";
+      record.providerError = "Falta LANDING_API_KEY: no se puede pasar el pedido a VentasPro.";
+    } else {
+      try {
+        const base = (process.env.VENTASPRO_URL || "https://ventasproia.com").replace(/\/+$/, "");
+        const r = await fetch(`${base}/api/landing-forge/pedido`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-api-key": clave },
+          body: JSON.stringify({
+            tenantId: vp.tenantId,
+            productId: vp.productId,
+            nombre: [payload.name, payload.surname].filter(Boolean).join(" "),
+            telefono: payload.phone,
+            documento: payload.dni,
+            direccion: payload.dir,
+            ciudad: payload.city,
+            departamento: payload.state,
+            cantidad: payload.quantity,
+            total: payload.total,
+            variante: payload.variant,
+            oferta: payload.bundle,
+            notas: payload.notes,
+            landing: record.slug || siteId,
+          }),
+          signal: AbortSignal.timeout(45_000),
+        });
+        const d: any = await r.json().catch(() => ({}));
+        record.provider = "ventaspro";
+        if (r.ok && d.ok) {
+          enviadoAVentasPro = true;
+          record.providerOrderId = String(d.pedidoId ?? "");
+          record.status = "enviado_proveedor";
+        } else {
+          record.providerError = String(d.error || `VentasPro respondio ${r.status}`).slice(0, 300);
+          record.status = "error";
+        }
+      } catch (e: any) {
+        record.provider = "ventaspro";
+        record.providerError = String(e?.message || e).slice(0, 300);
+        record.status = "error";
+      }
+    }
+  }
+
   /* ---------- Dropi ---------- */
-  if (kind === "cod" && provider === "dropi" && settings.dropi.token) {
+  if (!enviadoAVentasPro && !(vp.tenantId && vp.productId) && kind === "cod" && provider === "dropi" && settings.dropi.token) {
     try {
       const dropi = createDropi(settings);
       const res = await dropi.createOrder({
