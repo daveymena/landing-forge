@@ -41,3 +41,21 @@ export async function POST(req: Request) {
   const saved = await saveSettings(patch);
   return NextResponse.json({ settings: redactSettings(saved) });
 }
+
+/* Píxel global del negocio (08-10): si la landing no trae píxel propio,
+   /l/:slug usa este. PUT vía panel (sesión) o bot (x-api-key). */
+export async function PUT(req: Request) {
+  const body = await req.json().catch(() => ({}));
+  const patch: any = {};
+  if (body.pixels && typeof body.pixels === "object") {
+    const p = body.pixels;
+    patch.pixels = {};
+    for (const k of ["metaPixelId", "tiktokPixelId", "ga4Id", "googleAdsId"]) {
+      if (typeof p[k] === "string") patch.pixels[k] = p[k].trim().slice(0, 64);
+    }
+    if (typeof p.customHead === "string") patch.pixels.customHead = p.customHead.slice(0, 4000);
+  }
+  if (!patch.pixels) return NextResponse.json({ error: "Nada para guardar: manda {pixels:{...}}" }, { status: 400 });
+  const saved = await saveSettings(patch);
+  return NextResponse.json({ settings: redactSettings(saved) });
+}

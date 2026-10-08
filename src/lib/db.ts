@@ -127,6 +127,14 @@ export interface AppSettings {
     fallbacks: string[];
     temperature: number;
   };
+  /** Píxel global del negocio (08-10): fallback cuando la landing no trae propio. */
+  pixels: {
+    metaPixelId: string;
+    tiktokPixelId: string;
+    ga4Id: string;
+    googleAdsId: string;
+    customHead: string;
+  };
   updatedAt?: string;
 }
 
@@ -147,6 +155,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
     fallbacks: [],
     temperature: 0.7,
   },
+  pixels: {
+    metaPixelId: process.env.META_PIXEL_ID || "",
+    tiktokPixelId: "",
+    ga4Id: "",
+    googleAdsId: "",
+    customHead: "",
+  },
 };
 
 export async function getSettings(): Promise<AppSettings> {
@@ -166,6 +181,7 @@ export async function saveSettings(patch: Partial<AppSettings>): Promise<AppSett
     ...patch,
     dropi: { ...cur.dropi, ...(patch.dropi || {}) },
     ai: { ...cur.ai, ...(patch.ai || {}) },
+    pixels: { ...(cur as any).pixels, ...((patch as any).pixels || {}) },
     updatedAt: new Date().toISOString(),
   };
   await writeJson(SETTINGS, next);
