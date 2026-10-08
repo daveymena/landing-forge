@@ -314,10 +314,11 @@ export const CATALOG: BlockDef[] = [
     ],
     defaults: {
       items: [
+        // Sellos que valen para cualquier negocio contraentrega. Plazos,
+        // garantia o "despacho el mismo dia" solo si el dueno los da (hechos).
         { icon: "💵", title: "Pago contra entrega", text: "Pagas cuando lo recibes" },
-        { icon: "🚚", title: "Envío 24 – 72 h", text: "Cobertura nacional" },
-        { icon: "🛡️", title: "Garantía 30 días", text: "Devolución sin preguntas" },
-        { icon: "📦", title: "Stock disponible", text: "Despacho el mismo día" },
+        { icon: "🚚", title: "Envío a domicilio", text: "Hasta la puerta de tu casa" },
+        { icon: "💬", title: "Confirmación por WhatsApp", text: "Te escribimos antes de enviarlo" },
       ],
     },
     ai: "trustIcons{items[{icon:emoji,title,text}]} variant: row|cards",

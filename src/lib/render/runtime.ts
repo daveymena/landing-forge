@@ -90,14 +90,18 @@ $$('[data-lf-billing]').forEach(function(t){
 var SELECTED={qty:1,price:0,label:''};
 (function(){
   var bs=$$('[data-lf-bundle]'); if(!bs.length) return;
-  function pick(b){
-    bs.forEach(function(x){x.setAttribute('aria-pressed',String(x===b))});
+  /* el bloque de paquetes y el selector del formulario son el mismo control */
+  function pick(b,user){
+    var i=b.getAttribute('data-i');
+    bs.forEach(function(x){x.setAttribute('aria-pressed',String(i!==null?x.getAttribute('data-i')===i:x===b))});
     SELECTED={qty:parseInt(b.getAttribute('data-qty')||'1',10),price:parseFloat(b.getAttribute('data-price')||'0'),label:b.getAttribute('data-label')||''};
     syncSummary();
+    var sl=$('.sticky-bar__l');
+    if(user&&sl&&SELECTED.label){sl.textContent=SELECTED.label;var was=$('.sticky-bar__v span');if(was&&SELECTED.qty>1)was.style.display='none';else if(was)was.style.display=''}
   }
-  bs.forEach(function(b){b.addEventListener('click',function(){pick(b)})});
+  bs.forEach(function(b){b.addEventListener('click',function(){pick(b,true)})});
   var pre=bs.filter(function(b){return b.getAttribute('aria-pressed')==='true'})[0]||bs[0];
-  if(pre)pick(pre);
+  if(pre)pick(pre,false);
 })();
 
 /* ---------- variantes (color/talla): una por grupo ---------- */
@@ -190,6 +194,8 @@ $$('[data-lf-form]').forEach(function(form){
     var fd=new FormData(form);
     if(fd.get('website')){return} // honeypot
     var payload={};fd.forEach(function(v,k){payload[k]=v});
+    /* un solo campo "Nombre y apellido": Dropi los pide por separado */
+    if(payload.fullname&&!payload.name){var np=String(payload.fullname).trim().split(/\\s+/);payload.name=np.shift()||'';payload.surname=np.join(' ');delete payload.fullname}
     payload.siteId=SITE;payload.slug=form.getAttribute('data-slug')||'';
     payload.kind=form.getAttribute('data-kind')||'cod';
     payload.currency=CUR;

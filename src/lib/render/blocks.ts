@@ -257,20 +257,28 @@ const R: Record<string, Renderer> = {
 
     if (b.variant === "product") {
       const imgs: string[] = list(p, "images").map((x: any) => x.src).filter(Boolean);
-      const all = imgs.length ? imgs : ctx.spec.product.images || [];
+      // La foto elegida para el hero manda; despues las del producto, sin repetir.
+      const all = [...new Set([p.image, ...(imgs.length ? imgs : ctx.spec.product.images || [])].filter(Boolean) as string[])];
       const price = Number(p.price) || Number(ctx.spec.product.price) || 0;
       const was = Number(p.compareAtPrice) || Number(ctx.spec.product.compareAtPrice) || 0;
       const pct = offPct(price, was);
-      const gal = `<div class="gal reveal" data-lf-gallery>
-        <div class="gal__main">${all[0] ? img(all[0], p.title, "", true) : `<div class="ph">Foto del producto</div>`}</div>
-        ${all.length > 1 ? `<div class="gal__thumbs">${all.map((s, i) => `<button type="button" aria-selected="${i === 0}" data-i="${i}" data-src="${esc(s)}">${img(s, "")}</button>`).join("")}</div>` : ""}
-      </div>`;
-      const priceBox = price
-        ? `<div class="price" style="margin-top:22px"><span class="price__now">${money(price, cur)}</span>${was > price ? `<span class="price__was">${money(was, cur)}</span><span class="price__off">${pct}</span>` : ""}</div>`
+      // Publicada sin fotos: sin recuadro rayado de "Foto del producto".
+      const main = all[0] ? img(all[0], p.title, "", true) : ctx.mode === "edit" ? `<div class="ph">Foto del producto</div>` : "";
+      const gal = main
+        ? `<div class="gal" data-lf-gallery>
+        <div class="gal__main">${main}</div>
+        ${all.length > 1 ? `<div class="gal__thumbs">${all.map((s, i) => `<button type="button" aria-selected="${i === 0}" aria-label="Foto ${i + 1}" data-i="${i}" data-src="${esc(s)}">${img(s, "")}</button>`).join("")}</div>` : ""}
+      </div>`
         : "";
-      return `<section ${secAttrs(ctx, b, "hero")}><div class="wrap"><div class="split">
+      const priceBox = price
+        ? `<div class="price hero__price"><span class="price__now">${money(price, cur)}</span>${was > price ? `<span class="price__was">${money(was, cur)}</span><span class="price__off">${pct}</span>` : ""}</div>`
+        : "";
+      // Orden de la product page contraentrega (modelo aprobado): foto ->
+      // promesa -> PRECIO -> checks -> boton. El precio pegado al titular
+      // entra en el primer pantallazo del celular; el subtitulo va despues.
+      return `<section ${secAttrs(ctx, b, "hero hero--product")}><div class="wrap"><div class="split">
         ${gal}
-        <div class="reveal">${eyebrow}${title}${sub}${rating}${priceBox}${bullets}${ctas}${ctaSub}</div>
+        <div>${eyebrow}${title}${rating}${priceBox}${sub}${bullets}${ctas}${ctaSub}</div>
       </div></div></section>`;
     }
 
@@ -488,10 +496,12 @@ const R: Record<string, Renderer> = {
   reviewsUgc: (ctx, b, p) => {
     const items = list(p, "items");
     const topline = Number(p.rating)
-      ? `<div class="rating-row ta-c" style="justify-content:center;margin:-18px 0 32px">${stars(p.rating)}<span><b style="color:var(--text)">${esc(p.rating)}/5</b> · ${esc(p.ratingCount)} reseñas verificadas</span></div>`
+      ? `<div class="rating-row ta-c" style="justify-content:center;margin:-18px 0 32px">${stars(p.rating)}<span><b style="color:var(--text)">${esc(p.rating)}/5</b>${p.ratingCount ? ` · ${esc(p.ratingCount)} reseñas` : ""}</span></div>`
       : "";
+    // Sin foto del cliente no hay recuadro: publicado, era un bloque vacio de
+    // 260px por resena (auditoria 07-10).
     const card = (x: any, i: number) => `<div class="ugc__card reveal">
-      <div class="ugc__img">${img(x.image, x.name)}</div>
+      ${x.image || ctx.mode === "edit" ? `<div class="ugc__img">${img(x.image, x.name)}</div>` : ""}
       <div class="ugc__body">${stars(x.rating || 5)}
         <p style="margin:9px 0 0;font-size:15px"${f(ctx, `items.${i}.quote`)}>“${rich(x.quote)}”</p>
         <div style="font-weight:620;font-size:14px;margin-top:10px"${f(ctx, `items.${i}.name`)}>${rich(x.name)}</div>
@@ -521,7 +531,10 @@ const R: Record<string, Renderer> = {
   bundle: (ctx, b, p) => {
     const cur = p.currency || ctx.spec.product.currency || "COP";
     const opts = list(p, "options");
-    const card = (x: any, i: number) => `<button type="button" class="bundle reveal" data-lf-bundle data-qty="${esc(x.qty)}" data-price="${esc(x.price)}" data-label="${esc(x.label)}" aria-pressed="${x.featured ? "true" : "false"}">
+    // Arranca elegida la de 1 unidad (como la product page aprobada): quien
+    // viene del anuncio con un precio no debe encontrar el resumen en x2. La
+    // destacada se sigue viendo destacada (borde + sello).
+    const card = (x: any, i: number) => `<button type="button" class="bundle${x.featured ? " bundle--featured" : ""} reveal" data-lf-bundle data-i="${i}" data-qty="${esc(x.qty)}" data-price="${esc(x.price)}" data-label="${esc(x.label)}" aria-pressed="${i === 0 ? "true" : "false"}">
       ${x.badge ? `<span class="badge">${esc(x.badge)}</span>` : ""}
       <span class="bundle__radio"></span>
       <div class="bundle__l"${f(ctx, `options.${i}.label`)}>${rich(x.label)}</div>
@@ -626,11 +639,25 @@ const R: Record<string, Renderer> = {
           .join("")
       : "";
 
+    // Paquetes DENTRO del formulario (estilo Releasit): quien llega al
+    // formulario elige aqui, sin volver arriba. Se sincroniza con el bloque
+    // bundle por data-i. Con paquetes no hay contador de cantidad: eran dos
+    // controles que se pisaban (el contador borraba el paquete elegido).
+    const bundleBlock = sp.blocks.find((x) => x.type === "bundle" && x.visible !== false);
+    const packs = list(bundleBlock?.props || {}, "options").filter((o: any) => Number(o?.price) > 0);
+    const packsHtml = packs.length > 1
+      ? `<div class="field"><label>Elige tu oferta</label><div class="fpacks">${packs
+          .map(
+            (o: any, i: number) => `<button type="button" class="fpack" data-lf-bundle data-i="${i}" data-qty="${esc(o.qty)}" data-price="${esc(o.price)}" data-label="${esc(o.label)}" aria-pressed="${i === 0 ? "true" : "false"}"><span class="fpack__r"></span><span class="fpack__l">${esc(o.label)}${o.badge ? ` <em>${esc(o.badge)}</em>` : ""}</span><b>${money(o.price, cur)}</b></button>`,
+          )
+          .join("")}</div></div>`
+      : "";
+
+    // Un solo campo de nombre: el runtime lo parte en nombre/apellido para
+    // Dropi. Cada campo de mas en el celular es gente que abandona.
     const fieldsHtml = `
-      <div class="frow">
-        <div class="field"><label for="lf-name">Nombre *</label><input class="input" id="lf-name" name="name" required autocomplete="given-name" placeholder="Tu nombre"></div>
-        <div class="field"><label for="lf-surname">Apellido *</label><input class="input" id="lf-surname" name="surname" required autocomplete="family-name" placeholder="Tu apellido"></div>
-      </div>
+      ${packsHtml}
+      <div class="field"><label for="lf-name">Nombre y apellido *</label><input class="input" id="lf-name" name="fullname" required autocomplete="name" placeholder="Ej: Laura Gómez"></div>
       <div class="field"><label for="lf-phone">WhatsApp / Celular *</label><input class="input" id="lf-phone" name="phone" required inputmode="tel" autocomplete="tel" placeholder="300 123 4567"></div>
       ${p.askEmail ? `<div class="field"><label for="lf-email">Correo</label><input class="input" id="lf-email" name="email" type="email" autocomplete="email" placeholder="tu@correo.com"></div>` : ""}
       ${p.askDni ? `<div class="field"><label for="lf-dni">Cédula</label><input class="input" id="lf-dni" name="dni" inputmode="numeric" placeholder="Número de documento"></div>` : ""}
@@ -639,10 +666,12 @@ const R: Record<string, Renderer> = {
         <div class="field"><label for="lf-city">Ciudad *</label><select class="select" id="lf-city" name="city" required data-lf-city><option value="">Selecciona…</option></select></div>
       </div>
       <div class="field"><label for="lf-dir">Dirección completa *</label><input class="input" id="lf-dir" name="dir" required autocomplete="street-address" placeholder="Calle 10 # 5-20, Apto 301, Barrio…"></div>
-      ${p.askNotes ? `<div class="field"><label for="lf-notes">Indicaciones para el mensajero</label><textarea class="input" id="lf-notes" name="notes" placeholder="Punto de referencia, horario preferido…"></textarea></div>` : ""}
+      ${p.askNotes ? `<div class="field"><label for="lf-notes">Barrio y punto de referencia <span class="opt">(opcional)</span></label><input class="input" id="lf-notes" name="notes" placeholder="Ej: Barrio El Prado, frente al parque"></div>` : ""}
       ${varHtml}
       ${
-        p.askQuantity
+        packsHtml
+          ? `<input type="hidden" name="quantity" value="1" data-lf-qtyinput>`
+          : p.askQuantity
           ? `<div class="field"><label>Cantidad</label><div class="qty"><button type="button" data-lf-qty="-1" aria-label="Quitar">−</button><input name="quantity" value="1" inputmode="numeric" data-lf-qtyinput><button type="button" data-lf-qty="1" aria-label="Agregar">+</button></div></div>`
           : `<input type="hidden" name="quantity" value="1" data-lf-qtyinput>`
       }

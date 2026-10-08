@@ -527,6 +527,41 @@ ${
   .trust--3 .trust__i > div:first-of-type + div{font-size:13.5px}
   .trust--3 .small{font-size:12px}
   .trust__ico{width:42px;height:42px;margin-bottom:8px}
+  /* Primer pantallazo (390x844, auditoria 07-10): la foto ocupaba toda la
+     pantalla y el titular quedaba debajo de la barra fija, sin precio a la
+     vista. Ahora entran foto + promesa + precio, y la barra pone el boton. */
+  .ann{font-size:13px;padding:8px 34px 8px 14px;line-height:1.35}
+  .nav__in{height:58px}
+  .hero--product{padding-top:12px;padding-bottom:34px}
+  .hero--product .wrap{padding-top:0}
+  .hero--product .split{gap:14px}
+  .hero--product .gal{gap:8px}
+  .hero--product .gal__main{aspect-ratio:auto;height:min(86vw,40svh);min-height:240px;background:var(--bg)}
+  .hero--product .gal__main img{object-fit:contain}
+  .hero--product .gal__thumbs button{flex-basis:52px;height:52px;border-radius:10px}
+  .hero--product .eyebrow{margin-bottom:6px;font-size:11.5px}
+  .hero--product .h1{font-size:clamp(1.5rem,6.6vw,2rem);line-height:1.14}
+  .hero--product .hero__price{margin-top:10px}
+  .hero--product .price__now{font-size:2rem}
+  .hero--product .lead{margin-top:12px}
+  .hero--product .hero__bullets{margin-top:14px;gap:8px}
+  .hero--product .hero__bullets li{font-size:15px}
+  /* WhatsApp en movil: solo el icono, para no tapar titulares */
+  body.has-sticky .fab{padding:13px;border-radius:50%;bottom:88px;right:14px}
+  body.has-sticky .fab span{display:none}
 }
+.hero__price{margin-top:22px}
+.opt{font-weight:400;color:var(--muted)}
+.fpacks{display:grid;gap:8px}
+.fpack{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;padding:12px 14px;
+  border:1.5px solid var(--border);border-radius:12px;background:var(--bg);color:var(--text);font:inherit}
+.fpack[aria-pressed=true]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--bg))}
+.fpack__r{flex:0 0 18px;width:18px;height:18px;border-radius:50%;border:2px solid var(--border);display:grid;place-items:center}
+.fpack[aria-pressed=true] .fpack__r{border-color:var(--accent);background:var(--accent)}
+.fpack[aria-pressed=true] .fpack__r::after{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent-fg)}
+.fpack__l{flex:1;font-weight:600;font-size:15px}
+.fpack__l em{font-style:normal;font-size:11.5px;font-weight:700;color:var(--accent);margin-left:4px;white-space:nowrap}
+.fpack b{font-family:var(--ff-display);font-size:16px}
+.bundle--featured{border-color:color-mix(in srgb,var(--accent) 55%,var(--border))}
 `.trim();
 }
