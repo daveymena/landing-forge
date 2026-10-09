@@ -25,7 +25,9 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const url = String(body.productUrl || body.url || "").trim();
   const name = String(body.productName || body.title || "").trim();
-  const kind = body.productKind === "digital" ? "digital" : "physical";
+  // 09-10-2026: un servicio (abogado, clínica, asesoría) caía en "physical" y
+  // salía una tienda contraentrega. Ahora es su propio tipo.
+  const kind = body.productKind === "digital" ? "digital" : body.productKind === "service" ? "service" : "physical";
   const whatsapp = String(body.whatsapp || process.env.WHATSAPP_NUMBER || "573136174267").trim();
   // Hechos del negocio que manda VentasPro (marca, envio, garantia, trato):
   // lo unico que la landing puede prometer. Ver lib/ai/hechos.ts.
@@ -103,21 +105,42 @@ export async function POST(req: Request) {
   // Prompt PRO: pais + precio + publico + promesa. Si el bot/Atlas manda un
   // prompt ya armado se respeta y se le suma el contexto operativo.
   const given = String(body.prompt || "").trim();
-  const auto = [
-    `Landing para vender ${productName}`,
-    price ? `a ${price} ${currency}` : "",
-    kind === "digital"
-      ? "producto digital"
-      : `con ${hechos?.pago || "pago contra entrega"}${hechos?.cobertura ? ` (${hechos.cobertura})` : " en Colombia"}`,
-    source?.description ? `. ${String(source.description).slice(0, 400)}` : "",
-    checkout ? `. El boton de compra lleva a ${checkout}` : "",
-    whatsapp ? `. WhatsApp de contacto ${whatsapp}` : "",
-  ].filter(Boolean).join(" ");
-  const prompt = given ? `${given} ${checkout ? `El boton de compra lleva a ${checkout}. ` : ""}${whatsapp ? `WhatsApp de contacto ${whatsapp}.` : ""}`.trim() : auto;
+  // Un servicio no se compra: se agenda. Va en el pedido aunque Atlas mande su
+  // propio brief, porque es lo que decide el tipo de página (brief.ts lo lee).
+  const reglasServicio =
+    `Es un SERVICIO profesional: el objetivo de la pagina es que la persona agende una consulta por WhatsApp. ` +
+    `Sin carrito, sin pago contra entrega, sin envio. Precio ${Number(price) > 0 ? `desde ${price} ${currency}` : "segun el caso"}. ` +
+    `Sin testimonios, cifras, logos de clientes ni casos que no esten en los hechos, y sin prometer resultados.`;
+  const auto = kind === "service"
+    ? [
+        `Pagina de servicio para ${productName}.`,
+        reglasServicio,
+        source?.description ? String(source.description).slice(0, 400) : "",
+        whatsapp ? `WhatsApp de contacto ${whatsapp}.` : "",
+      ].filter(Boolean).join(" ")
+    : [
+        `Landing para vender ${productName}`,
+        price ? `a ${price} ${currency}` : "",
+        kind === "digital"
+          ? "producto digital"
+          : `con ${hechos?.pago || "pago contra entrega"}${hechos?.cobertura ? ` (${hechos.cobertura})` : " en Colombia"}`,
+        source?.description ? `. ${String(source.description).slice(0, 400)}` : "",
+        checkout ? `. El boton de compra lleva a ${checkout}` : "",
+        whatsapp ? `. WhatsApp de contacto ${whatsapp}` : "",
+      ].filter(Boolean).join(" ");
+  const prompt = given
+    ? kind === "service"
+      ? `${given} ${reglasServicio} ${whatsapp ? `WhatsApp de contacto ${whatsapp}.` : ""}`.trim()
+      : `${given} ${checkout ? `El boton de compra lleva a ${checkout}. ` : ""}${whatsapp ? `WhatsApp de contacto ${whatsapp}.` : ""}`.trim()
+    : auto;
 
   // Sin plantilla forzada: la IA elige flujo y tema segun vertical y brief
   // (antes siempre caia en cod-urgency/digital-vsl y todo se veia igual).
-  const templateId = typeof body.templateId === "string" && body.templateId ? body.templateId : undefined;
+  // Un servicio sin plantilla pedida va a la de servicio: problema, proceso,
+  // formulario de consulta y agenda; nunca la de contraentrega.
+  const templateId = typeof body.templateId === "string" && body.templateId
+    ? body.templateId
+    : kind === "service" ? "service-agency" : undefined;
 
   const aiProvider = body.aiProvider && typeof body.aiProvider === "object" ? body.aiProvider : undefined;
   const trafico = String(body.trafico || (kind === "digital" ? "organico" : "facebook"));
