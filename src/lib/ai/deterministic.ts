@@ -29,7 +29,7 @@ export function generateDeterministic(prompt: string, overrides: Partial<PageSpe
   const presetId = template?.preset || suggestPreset(prompt, brief.vertical);
   const theme = themeFromPreset(presetId);
   const blocks =
-    brief.vertical === "cod" ? codBlocks(brief)
+    brief.vertical === "cod" ? codBlocks(brief, overrides.product?.images ?? [])
       : brief.vertical === "digital" ? digitalBlocks(brief)
         : brief.vertical === "saas" ? saasBlocks(brief)
           : serviceBlocks(brief);
@@ -131,7 +131,7 @@ function capitalize(s: string) { return s.charAt(0).toUpperCase() + s.slice(1); 
    garantía (se oculta si no es real) → FAQ → cierre → barra fija.
    Fuera del plan B: reseñas, "4.8 · 2.147 reseñas", comparativa contra "el
    genérico" y contador de 15 minutos con stock de mentira: todo inventado. */
-function codBlocks(b: Brief): Block[] {
+function codBlocks(b: Brief, fotos: string[] = []): Block[] {
   const cur = b.currency;
   const p1 = b.price;
   // Paquetes redondeados a precio de vitrina ($152.900, no $152.830).
@@ -160,20 +160,13 @@ function codBlocks(b: Brief): Block[] {
         { text: "Pagas en efectivo cuando lo recibes" },
       ],
     }),
-    B("trustIcons", "row", {}),
+    ...(fotos.length ? [B("gallery", "scroll", { title: "", items: fotos.slice(0, 6).map((url) => ({ url, caption: "" })) })] : []),
     B("benefits", "grid", {
       eyebrow: "Beneficios",
       title: `Lo que cambia cuando tienes ${b.productName}`,
       subtitle: "",
       items: benefitItems(b, 3),
       bg: "surface",
-    }),
-    B("beforeAfter", "columns", {
-      title: "La diferencia se nota desde el primer día",
-      beforeLabel: "Antes",
-      afterLabel: `Con ${b.productName}`,
-      before: [{ text: "Gastas en soluciones que no duran" }, { text: "Pierdes tiempo probando opciones" }, { text: "El problema siempre vuelve" }],
-      after: [{ text: capitalize(ben(b, 0)) }, { text: capitalize(ben(b, 1)) }, { text: "Resultado que se mantiene" }],
     }),
     B("bundle", "cards", {
       eyebrow: "Oferta de hoy",

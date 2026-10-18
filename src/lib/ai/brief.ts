@@ -164,7 +164,8 @@ export function parseBrief(prompt: string): Brief {
   // "antes / normalmente X" marca el precio tachado
   const marked = cands.find((c) => /(?:antes|normal|regular|tachado|de\s*)$/i.test(c.before.trim()) && c.n > price);
   const higher = cands.filter((c) => c.n > price).sort((a, b) => a.n - b.n)[0];
-  let compareAtPrice = marked?.n ?? higher?.n ?? Math.round(price * 1.6);
+  // Sin precio anterior real NO se inventa un descuento: 0 = no se muestra tachado.
+  let compareAtPrice = marked?.n ?? higher?.n ?? 0;
   if (!minor) compareAtPrice = Math.round(compareAtPrice / 100) * 100;
 
   /* ---- nombre del producto ---- */
